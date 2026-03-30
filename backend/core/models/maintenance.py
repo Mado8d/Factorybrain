@@ -11,7 +11,7 @@ from sqlalchemy import (
     Integer,
     Interval,
     Numeric,
-    Real,
+    Float,
     String,
     text,
 )
@@ -86,7 +86,7 @@ class MaintenanceAlert(Base):
     )
     alert_type: Mapped[str] = mapped_column(String, nullable=False)
     severity: Mapped[str] = mapped_column(String, nullable=False, server_default="info")
-    anomaly_score: Mapped[float | None] = mapped_column(Real, nullable=True)
+    anomaly_score: Mapped[float | None] = mapped_column(Float, nullable=True)
     predicted_rul: Mapped[str | None] = mapped_column(Interval, nullable=True)
     details: Mapped[dict] = mapped_column(JSONB, server_default="{}")
     status: Mapped[str] = mapped_column(String, server_default="open")

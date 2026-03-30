@@ -94,8 +94,8 @@ export const useDashboard = create<DashboardState>((set, get) => ({
   loadAll: async () => {
     try {
       const [prefsData, settingsData] = await Promise.all([
-        api.getDashboardPreferences(),
-        api.getTenantSettings(),
+        api.getDashboardPreferences().catch(() => ({ widgets: [] })),
+        api.getTenantSettings().catch(() => ({ settings: {} })),
       ]);
       set({
         widgets: (prefsData as any).widgets || [],

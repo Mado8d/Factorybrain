@@ -3,8 +3,9 @@
  * Handles authentication, requests, and WebSocket connections.
  */
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-const WS_BASE = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000';
+// In development, use relative URLs so Next.js rewrites proxy to the backend
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
+const WS_BASE = process.env.NEXT_PUBLIC_WS_URL || `ws://localhost:8000`;
 
 export interface User {
   id: string;
@@ -23,20 +24,22 @@ export interface LoginResponse {
 class ApiClient {
   private token: string | null = null;
 
-  setToken(token: string | null) {
+  setToken(token: string | null, remember: boolean = true) {
     this.token = token;
     if (typeof window !== 'undefined') {
+      // Clear from both storages first
+      localStorage.removeItem('fb_token');
+      sessionStorage.removeItem('fb_token');
       if (token) {
-        localStorage.setItem('fb_token', token);
-      } else {
-        localStorage.removeItem('fb_token');
+        const storage = remember ? localStorage : sessionStorage;
+        storage.setItem('fb_token', token);
       }
     }
   }
 
   getToken(): string | null {
     if (!this.token && typeof window !== 'undefined') {
-      this.token = localStorage.getItem('fb_token');
+      this.token = localStorage.getItem('fb_token') || sessionStorage.getItem('fb_token');
     }
     return this.token;
   }
@@ -45,6 +48,7 @@ class ApiClient {
     this.setToken(null);
     if (typeof window !== 'undefined') {
       localStorage.removeItem('fb_refresh_token');
+      sessionStorage.removeItem('fb_refresh_token');
       window.location.href = '/login';
     }
   }
@@ -65,7 +69,8 @@ class ApiClient {
     });
 
     if (response.status === 401) {
-      this.logout();
+      // Don't auto-logout on every 401 — let the auth store handle it
+      this.setToken(null);
       throw new Error('Unauthorized');
     }
 
@@ -78,7 +83,7 @@ class ApiClient {
   }
 
   // --- Auth ---
-  async login(email: string, password: string): Promise<LoginResponse> {
+  async login(email: string, password: string, remember: boolean = true): Promise<LoginResponse> {
     const formData = new URLSearchParams();
     formData.append('username', email);
     formData.append('password', password);
@@ -95,9 +100,10 @@ class ApiClient {
     }
 
     const data: LoginResponse = await response.json();
-    this.setToken(data.access_token);
+    this.setToken(data.access_token, remember);
     if (typeof window !== 'undefined') {
-      localStorage.setItem('fb_refresh_token', data.refresh_token);
+      const storage = remember ? localStorage : sessionStorage;
+      storage.setItem('fb_refresh_token', data.refresh_token);
     }
     return data;
   }

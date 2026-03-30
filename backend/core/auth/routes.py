@@ -4,10 +4,10 @@ from datetime import datetime, timedelta, timezone
 from typing import Annotated
 from uuid import UUID
 
+import bcrypt
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,7 +17,6 @@ from core.database import get_db
 from core.auth.models import User
 
 router = APIRouter()
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 
@@ -52,11 +51,11 @@ class UserResponse(BaseModel):
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+    return bcrypt.checkpw(plain.encode(), hashed.encode())
 
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
 
 def create_token(data: dict, expires_delta: timedelta) -> str:
@@ -104,7 +103,8 @@ async def get_current_user(
         raise credentials_exception
 
     # Set tenant context for RLS
-    await db.execute(f"SET LOCAL app.current_tenant = '{user.tenant_id}'")  # noqa: S608
+    from sqlalchemy import text
+    await db.execute(text(f"SET LOCAL app.current_tenant = '{user.tenant_id}'"))
 
     return user
 

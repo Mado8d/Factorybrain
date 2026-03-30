@@ -1,6 +1,7 @@
 """FactoryBrain — Main FastAPI application."""
 
 import logging
+import sys
 from contextlib import asynccontextmanager
 from collections.abc import AsyncGenerator
 
@@ -19,14 +20,18 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Startup and shutdown events."""
     logger.info("Starting FactoryBrain API...")
 
-    # Start MQTT consumer as background task
-    await mqtt_service.start()
-    logger.info("MQTT consumer started")
+    # Start MQTT consumer (skip on Windows — aiomqtt needs SelectorEventLoop)
+    if sys.platform != "win32":
+        await mqtt_service.start()
+        logger.info("MQTT consumer started")
+    else:
+        logger.warning("MQTT consumer disabled on Windows. Use the DB simulator instead.")
 
     yield
 
     # Shutdown
-    await mqtt_service.stop()
+    if sys.platform != "win32":
+        await mqtt_service.stop()
     logger.info("FactoryBrain API stopped")
 
 

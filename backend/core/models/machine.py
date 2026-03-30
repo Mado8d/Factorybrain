@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import ForeignKey, Integer, Real, String, text
+from sqlalchemy import Float, ForeignKey, Integer, String, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -28,7 +28,7 @@ class Machine(Base):
     manufacturer: Mapped[str | None] = mapped_column(String, nullable=True)
     model: Mapped[str | None] = mapped_column(String, nullable=True)
     year_installed: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    rated_power_kw: Mapped[float | None] = mapped_column(Real, nullable=True)
+    rated_power_kw: Mapped[float | None] = mapped_column(Float, nullable=True)
     status: Mapped[str] = mapped_column(String, server_default="active")
     specifications: Mapped[dict] = mapped_column(JSONB, server_default="{}")
     created_at: Mapped[datetime] = mapped_column(server_default=text("NOW()"))

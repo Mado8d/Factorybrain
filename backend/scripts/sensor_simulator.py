@@ -134,9 +134,9 @@ async def run_simulator(mode: str, interval: float):
         ("VS-003", "PRT-01", "healthy" if mode != "faulty" else "degrading"),
     ]
 
-    print(f"🏭 Sensor simulator started — mode: {mode}, interval: {interval}s")
-    print(f"   Publishing to MQTT at localhost:1883")
-    print(f"   Simulating {len(machines)} VibeSense nodes + 1 EnergySense node")
+    print(f"[SIM] Sensor simulator started - mode: {mode}, interval: {interval}s")
+    print(f"      Publishing to MQTT at localhost:1883")
+    print(f"      Simulating {len(machines)} VibeSense nodes + 1 EnergySense node")
     print()
 
     async with aiomqtt.Client(hostname="localhost", port=1883) as client:
@@ -149,20 +149,20 @@ async def run_simulator(mode: str, interval: float):
                 topic = f"factory/{DEV_TENANT_ID}/machine/{machine_id}/telemetry"
                 await client.publish(topic, json.dumps(reading))
 
-                status = "🟢" if node_mode == "healthy" else "🟡" if node_mode == "degrading" else "🔴"
+                status = "[OK]" if node_mode == "healthy" else "[WARN]" if node_mode == "degrading" else "[CRIT]"
                 print(
                     f"  {status} {node_id}: "
                     f"vib={reading['vibration']['rms_x']:.2f} "
                     f"freq={reading['vibration']['dominant_freq']} "
                     f"anomaly={reading['vibration']['anomaly_score']:.3f} "
-                    f"temp={reading['temp']}°C"
+                    f"temp={reading['temp']}C"
                 )
 
             # EnergySense node
             energy = generate_energysense_reading("ES-001", elapsed)
             await client.publish(f"home/{DEV_TENANT_ID}/telemetry", json.dumps(energy))
-            solar_icon = "☀️" if energy["solar_power_w"] > 100 else "🌙"
-            grid_icon = "⬇️" if energy["grid_power_w"] > 0 else "⬆️"
+            solar_icon = "[SUN]" if energy["solar_power_w"] > 100 else "[MOON]"
+            grid_icon = "[DOWN]" if energy["grid_power_w"] > 0 else "[UP]"
             print(
                 f"  {solar_icon} ES-001: "
                 f"solar={energy['solar_power_w']:.0f}W "
@@ -189,6 +189,10 @@ def main():
     )
     args = parser.parse_args()
 
+    # Windows needs SelectorEventLoop for aiomqtt compatibility
+    import sys
+    if sys.platform == "win32":
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     asyncio.run(run_simulator(args.mode, args.interval))
 
 
