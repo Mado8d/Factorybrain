@@ -1,0 +1,124 @@
+services:
+  # ============================================================
+  # TimescaleDB — Time-series + relational in one database
+  # ============================================================
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    container_name: fb-timescaledb
+    restart: unless-stopped
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-factorybrain}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_DB: ${POSTGRES_DB:-factorybrain}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-factorybrain}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================
+  # Redis — Cache, pub/sub, Celery broker
+  # ============================================================
+  redis:
+    image: redis:7-alpine
+    container_name: fb-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================
+  # Mosquitto — MQTT broker for sensor telemetry
+  # ============================================================
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: fb-mosquitto
+    restart: unless-stopped
+    ports:
+      - "${MQTT_PORT:-1883}:1883"
+      - "9001:9001"
+    volumes:
+      - ./scripts/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - mqttdata:/mosquitto/data
+      - mqttlog:/mosquitto/log
+    healthcheck:
+      test: ["CMD", "mosquitto_sub", "-t", "$$SYS/#", "-C", "1", "-i", "healthcheck", "-W", "3"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ============================================================
+  # MinIO — Object storage for models, reports, firmware
+  # ============================================================
+  minio:
+    image: minio/minio:latest
+    container_name: fb-minio
+    restart: unless-stopped
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "9090:9090"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    command: server /data --console-address ":9090"
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # ============================================================
+  # MinIO init — Create default buckets
+  # ============================================================
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 $${MINIO_ROOT_USER:-minioadmin} $${MINIO_ROOT_PASSWORD:-minioadmin};
+      mc mb --ignore-existing local/models;
+      mc mb --ignore-existing local/reports;
+      mc mb --ignore-existing local/firmware;
+      mc mb --ignore-existing local/attachments;
+      exit 0;
+      "
+
+  # ============================================================
+  # Caddy — Reverse proxy with auto-HTTPS
+  # ============================================================
+  caddy:
+    image: caddy:2-alpine
+    container_name: fb-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./scripts/Caddyfile:/etc/caddy/Caddyfile
+      - caddydata:/data
+      - caddyconfig:/config
+
+volumes:
+  pgdata:
+  redisdata:
+  mqttdata:
+  mqttlog:
+  miniodata:
+  caddydata:
+  caddyconfig:

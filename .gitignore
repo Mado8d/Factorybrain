@@ -1,0 +1,58 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+dist/
+build/
+.eggs/
+
+# Node
+node_modules/
+.next/
+out/
+
+# Environment
+.env
+.env.local
+.env.production
+
+# IDE
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.override.yml
+
+# Database
+*.sql.bak
+
+# ESP-IDF
+firmware/build/
+firmware/sdkconfig.old
+firmware/managed_components/
+
+# KiCad
+pcb/*/fp-info-cache
+pcb/*/*.kicad_prl
+pcb/*/backups/
+
+# ML
+ml/data/raw/
+ml/models/*.onnx
+ml/models/*.tflite
+*.pt
+*.pth
+
+# Misc
+*.log
+coverage/
+.coverage
+htmlcov/
+.pytest_cache/

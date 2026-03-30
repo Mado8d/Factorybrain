@@ -1,0 +1,111 @@
+{
+  "folders": [
+    {"path": ".", "name": "root"},
+    {"path": "backend", "name": "🐍 backend"},
+    {"path": "frontend", "name": "⚛️ frontend"},
+    {"path": "firmware", "name": "🔌 firmware"},
+    {"path": "pcb", "name": "📐 pcb"},
+    {"path": "ml", "name": "🧠 ml"}
+  ],
+  "settings": {
+    "python.defaultInterpreterPath": "${workspaceFolder:🐍 backend}/.venv/bin/python",
+    "python.analysis.typeCheckingMode": "basic",
+    "[python]": {
+      "editor.defaultFormatter": "charliermarsh.ruff",
+      "editor.formatOnSave": true,
+      "editor.codeActionsOnSave": {
+        "source.fixAll": "explicit",
+        "source.organizeImports": "explicit"
+      }
+    },
+    "[typescript][typescriptreact]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode",
+      "editor.formatOnSave": true
+    },
+    "files.exclude": {
+      "**/__pycache__": true,
+      "**/.pytest_cache": true,
+      "**/node_modules": true,
+      "**/.next": true
+    },
+    "editor.rulers": [100],
+    "terminal.integrated.cwd": "${workspaceFolder:root}"
+  },
+  "extensions": {
+    "recommendations": [
+      "ms-python.python",
+      "charliermarsh.ruff",
+      "ms-python.mypy-type-checker",
+      "bradlc.vscode-tailwindcss",
+      "esbenp.prettier-vscode",
+      "espressif.esp-idf-extension",
+      "ms-azuretools.vscode-docker"
+    ]
+  },
+  "launch": {
+    "configurations": [
+      {
+        "name": "Backend: FastAPI",
+        "type": "debugpy",
+        "request": "launch",
+        "module": "uvicorn",
+        "args": ["core.main:app", "--reload", "--port", "8000"],
+        "cwd": "${workspaceFolder:🐍 backend}",
+        "envFile": "${workspaceFolder:root}/.env"
+      },
+      {
+        "name": "Simulator: Healthy",
+        "type": "debugpy",
+        "request": "launch",
+        "module": "scripts.sensor_simulator",
+        "args": ["--mode", "healthy"],
+        "cwd": "${workspaceFolder:🐍 backend}",
+        "envFile": "${workspaceFolder:root}/.env"
+      },
+      {
+        "name": "Simulator: Degrading",
+        "type": "debugpy",
+        "request": "launch",
+        "module": "scripts.sensor_simulator",
+        "args": ["--mode", "degrading"],
+        "cwd": "${workspaceFolder:root}",
+        "envFile": "${workspaceFolder:root}/.env"
+      }
+    ]
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "Docker: Start infra",
+        "type": "shell",
+        "command": "docker compose up -d",
+        "problemMatcher": []
+      },
+      {
+        "label": "Docker: Stop infra",
+        "type": "shell",
+        "command": "docker compose down",
+        "problemMatcher": []
+      },
+      {
+        "label": "Docker: Logs",
+        "type": "shell",
+        "command": "docker compose logs -f",
+        "problemMatcher": []
+      },
+      {
+        "label": "Backend: Install deps",
+        "type": "shell",
+        "command": "cd backend && pip install -e '.[dev]'",
+        "problemMatcher": []
+      },
+      {
+        "label": "Backend: Test",
+        "type": "shell",
+        "command": "cd backend && pytest -v",
+        "problemMatcher": []
+      }
+    ]
+  }
+}

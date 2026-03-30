@@ -1,0 +1,34 @@
+"""SQLAlchemy models — central registry."""
+
+from core.models.base import Base
+from core.models.tenant import Tenant
+from core.models.user import User
+from core.models.plant import Plant, ProductionLine
+from core.models.machine import Machine
+from core.models.sensor_node import SensorNode
+from core.models.sensor_reading import SensorReading
+from core.models.machine_event import MachineEvent
+from core.models.maintenance import (
+    MaintenanceAlert,
+    MaintenanceWorkOrder,
+    ServiceProvider,
+    ServiceProviderUser,
+)
+from core.models.ai_suggestion import AISuggestion
+
+__all__ = [
+    "Base",
+    "Tenant",
+    "User",
+    "Plant",
+    "ProductionLine",
+    "Machine",
+    "SensorNode",
+    "SensorReading",
+    "MachineEvent",
+    "MaintenanceAlert",
+    "MaintenanceWorkOrder",
+    "ServiceProvider",
+    "ServiceProviderUser",
+    "AISuggestion",
+]
