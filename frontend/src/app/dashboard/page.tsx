@@ -2,9 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { api } from '@/lib/api';
-import { VibrationChart } from '@/components/dashboard/vibration-chart';
-import { AnomalyChart } from '@/components/dashboard/anomaly-chart';
-import { EnergyChart } from '@/components/dashboard/energy-chart';
+import { useDashboard } from '@/store/dashboard';
+import { WidgetGrid } from '@/components/dashboard/widget-grid';
 
 interface Machine {
   id: string;
@@ -53,26 +52,26 @@ export default function DashboardPage() {
   const [machines, setMachines] = useState<Machine[]>([]);
   const [kpis, setKpis] = useState<DashboardKPIs | null>(null);
   const [telemetry, setTelemetry] = useState<TelemetryData>({});
-  const [vibrationHistory, setVibrationHistory] = useState<any[]>([]);
-  const [energyHistory, setEnergyHistory] = useState<any[]>([]);
   const [time, setTime] = useState(new Date());
   const [loading, setLoading] = useState(true);
 
+  const { loadAll, getThreshold, getRefreshInterval, isLoading: dashLoading } = useDashboard();
+
+  // Load dashboard config (widgets + tenant settings)
+  useEffect(() => {
+    loadAll();
+  }, [loadAll]);
+
   const fetchData = useCallback(async () => {
     try {
-      const [machinesData, kpisData, telemetryData, vibData, energyData] =
-        await Promise.all([
-          api.getMachines() as Promise<Machine[]>,
-          api.getDashboardKPIs() as Promise<DashboardKPIs>,
-          api.getLatestTelemetry() as Promise<TelemetryData>,
-          api.getTelemetryHistory({ node_type: 'vibesense', hours: 6 }) as Promise<any[]>,
-          api.getTelemetryHistory({ node_type: 'energysense', hours: 6 }) as Promise<any[]>,
-        ]);
+      const [machinesData, kpisData, telemetryData] = await Promise.all([
+        api.getMachines() as Promise<Machine[]>,
+        api.getDashboardKPIs() as Promise<DashboardKPIs>,
+        api.getLatestTelemetry() as Promise<TelemetryData>,
+      ]);
       setMachines(machinesData);
       setKpis(kpisData);
       setTelemetry(telemetryData);
-      setVibrationHistory(vibData);
-      setEnergyHistory(energyData);
     } catch (err) {
       console.error('Failed to load dashboard data:', err);
     } finally {
@@ -82,10 +81,10 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchData();
-    // Refresh data every 30 seconds
-    const refreshInterval = setInterval(fetchData, 30000);
+    const interval = getRefreshInterval();
+    const refreshInterval = setInterval(fetchData, interval);
     return () => clearInterval(refreshInterval);
-  }, [fetchData]);
+  }, [fetchData, getRefreshInterval]);
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -107,19 +106,22 @@ export default function DashboardPage() {
         }));
       }
     });
-
-    return () => {
-      ws.close();
-    };
+    return () => ws.close();
   }, []);
 
-  if (loading) {
+  if (loading || dashLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-brand-600 border-r-transparent" />
       </div>
     );
   }
+
+  // Thresholds from tenant settings (not hardcoded!)
+  const vibWarning = getThreshold('vibration_warning');
+  const vibCritical = getThreshold('vibration_critical');
+  const anomalyWarning = getThreshold('anomaly_warning');
+  const anomalyCritical = getThreshold('anomaly_critical');
 
   return (
     <div>
@@ -139,55 +141,11 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* KPI cards */}
-      <div className="grid grid-cols-4 gap-4 mb-8">
-        <div className="bg-white rounded-xl border p-5">
-          <p className="text-sm text-gray-500">Machines actief</p>
-          <p className="text-3xl font-bold text-gray-900 mt-1">
-            {kpis?.active_machines ?? '-'}/{kpis?.total_machines ?? '-'}
-          </p>
-        </div>
-        <div className="bg-white rounded-xl border p-5">
-          <p className="text-sm text-gray-500">Plant OEE</p>
-          <p className="text-3xl font-bold text-gray-900 mt-1">
-            {kpis?.avg_oee != null ? `${kpis.avg_oee.toFixed(1)}%` : '—'}
-          </p>
-        </div>
-        <div
-          className={`rounded-xl border p-5 ${
-            (kpis?.open_alerts ?? 0) > 0 ? 'bg-red-50 border-red-200' : 'bg-white'
-          }`}
-        >
-          <p className="text-sm text-gray-500">Open alerts</p>
-          <p
-            className={`text-3xl font-bold mt-1 ${
-              (kpis?.open_alerts ?? 0) > 0 ? 'text-red-700' : 'text-gray-900'
-            }`}
-          >
-            {kpis?.open_alerts ?? 0}
-          </p>
-          {(kpis?.critical_alerts ?? 0) > 0 && (
-            <p className="text-xs text-red-500 mt-1">
-              {kpis!.critical_alerts} kritiek
-            </p>
-          )}
-        </div>
-        <div className="bg-white rounded-xl border p-5">
-          <p className="text-sm text-gray-500">Energieverbruik</p>
-          <p className="text-3xl font-bold text-gray-900 mt-1">
-            {kpis?.total_power_kw != null ? kpis.total_power_kw.toFixed(1) : '—'}
-            <span className="text-base font-normal text-gray-400"> kW</span>
-          </p>
-          {kpis?.solar_power_kw != null && kpis.solar_power_kw > 0 && (
-            <p className="text-xs text-green-600 mt-1">
-              ☀ {kpis.solar_power_kw.toFixed(1)} kW solar
-            </p>
-          )}
-        </div>
-      </div>
+      {/* Configurable widget grid (KPIs + charts) */}
+      <WidgetGrid kpis={kpis || {}} />
 
-      {/* Machine grid */}
-      <h2 className="text-lg font-semibold text-gray-900 mb-4">Machines</h2>
+      {/* Machine grid (structural, not a widget) */}
+      <h2 className="text-lg font-semibold text-gray-900 mt-2 mb-4">Machines</h2>
       {machines.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-xl border">
           <p className="text-gray-500">Nog geen machines geconfigureerd.</p>
@@ -199,7 +157,6 @@ export default function DashboardPage() {
         <div className="grid grid-cols-3 gap-4">
           {machines.map((machine) => {
             const config = statusConfig[machine.status] || statusConfig.inactive;
-            // Find telemetry for any node on this machine (simplified: match by machine name prefix)
             const nodeEntry = Object.entries(telemetry).find(
               ([nodeId]) =>
                 nodeId.toLowerCase().includes(machine.asset_tag?.toLowerCase() ?? '')
@@ -235,7 +192,11 @@ export default function DashboardPage() {
                           <p className="text-xs text-gray-400">Vibratie RMS</p>
                           <p
                             className={`text-sm font-medium ${
-                              (nodeData.vib_rms_x ?? 0) > 3 ? 'text-red-600' : 'text-gray-900'
+                              (nodeData.vib_rms_x ?? 0) > vibCritical
+                                ? 'text-red-600'
+                                : (nodeData.vib_rms_x ?? 0) > vibWarning
+                                ? 'text-amber-600'
+                                : 'text-gray-900'
                             }`}
                           >
                             {nodeData.vib_rms_x?.toFixed(1) ?? '—'} g
@@ -245,8 +206,10 @@ export default function DashboardPage() {
                           <p className="text-xs text-gray-400">Anomalie</p>
                           <p
                             className={`text-sm font-medium ${
-                              (nodeData.anomaly_score ?? 0) > 0.5
+                              (nodeData.anomaly_score ?? 0) > anomalyCritical
                                 ? 'text-red-600'
+                                : (nodeData.anomaly_score ?? 0) > anomalyWarning
+                                ? 'text-amber-600'
                                 : 'text-gray-900'
                             }`}
                           >
@@ -299,37 +262,6 @@ export default function DashboardPage() {
             );
           })}
         </div>
-      )}
-
-      {/* Charts */}
-      {(vibrationHistory.length > 0 || energyHistory.length > 0) && (
-        <>
-          <h2 className="text-lg font-semibold text-gray-900 mt-8 mb-4">
-            Trends (afgelopen 6 uur)
-          </h2>
-          <div className="grid grid-cols-2 gap-4">
-            {vibrationHistory.length > 0 && (
-              <>
-                <VibrationChart data={vibrationHistory} title="Vibratie trend" />
-                <AnomalyChart data={vibrationHistory} title="Anomalie score" />
-              </>
-            )}
-            {energyHistory.length > 0 && (
-              <>
-                <EnergyChart
-                  data={energyHistory}
-                  title="Grid vs Solar"
-                  mode="overview"
-                />
-                <EnergyChart
-                  data={energyHistory}
-                  title="Verbruik per kanaal"
-                  mode="channels"
-                />
-              </>
-            )}
-          </div>
-        </>
       )}
     </div>
   );

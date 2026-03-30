@@ -162,6 +162,30 @@ class ApiClient {
     return this.request(`/api/maintenance/work-orders${params}`);
   }
 
+  // --- Tenant Settings ---
+  async getTenantSettings() {
+    return this.request('/api/tenants/settings');
+  }
+
+  async updateTenantSettings(settings: any) {
+    return this.request('/api/tenants/settings', {
+      method: 'PUT',
+      body: JSON.stringify(settings),
+    });
+  }
+
+  // --- Dashboard Preferences ---
+  async getDashboardPreferences() {
+    return this.request('/api/dashboard/preferences');
+  }
+
+  async updateDashboardPreferences(prefs: any) {
+    return this.request('/api/dashboard/preferences', {
+      method: 'PUT',
+      body: JSON.stringify(prefs),
+    });
+  }
+
   // --- WebSocket ---
   connectLive(onMessage: (data: any) => void): WebSocket {
     const ws = new WebSocket(`${WS_BASE}/api/dashboard/ws/telemetry`);

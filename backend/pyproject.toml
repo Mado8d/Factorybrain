@@ -23,6 +23,8 @@ dependencies = [
     "redis[hiredis]>=5.2",
     # Task queue
     "celery[redis]>=5.4",
+    # Sync DB driver (for Celery tasks)
+    "psycopg2-binary>=2.9",
     # Object storage
     "minio>=7.2",
     # HTTP client

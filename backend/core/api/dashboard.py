@@ -11,12 +11,42 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.auth.routes import CurrentUser
 from core.database import get_db, set_tenant_context
 from core.models.sensor_reading import SensorReading
-from core.schemas.telemetry import DashboardKPIs
+from core.models.user import User
+from core.schemas.telemetry import (
+    DEFAULT_WIDGET_LAYOUT,
+    DashboardKPIs,
+    DashboardPreferencesUpdate,
+)
 from core.services import dashboard_service, machine_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+
+# --- Dashboard preferences (widget layout per user) ---
+
+@router.get("/preferences")
+async def get_dashboard_preferences(user: CurrentUser, db: AsyncSession = Depends(get_db)):
+    """Get the current user's dashboard widget configuration."""
+    widgets = (user.preferences or {}).get("widgets")
+    return {"widgets": widgets if widgets else DEFAULT_WIDGET_LAYOUT}
+
+
+@router.put("/preferences")
+async def update_dashboard_preferences(
+    data: DashboardPreferencesUpdate,
+    user: CurrentUser,
+    db: AsyncSession = Depends(get_db),
+):
+    """Save the user's dashboard widget layout."""
+    prefs = user.preferences or {}
+    prefs["widgets"] = [w.model_dump() for w in data.widgets]
+    user.preferences = prefs
+    await db.flush()
+    return {"widgets": prefs["widgets"]}
+
+
+# --- KPIs ---
 
 @router.get("/kpis", response_model=DashboardKPIs)
 async def get_kpis(user: CurrentUser, db: AsyncSession = Depends(get_db)):

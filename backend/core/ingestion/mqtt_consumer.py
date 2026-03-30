@@ -7,8 +7,11 @@ from datetime import datetime, timezone
 
 import aiomqtt
 
+from sqlalchemy import update
+
 from core.config import settings
 from core.database import async_session
+from core.models.sensor_node import SensorNode
 from core.models.sensor_reading import SensorReading
 
 logger = logging.getLogger(__name__)
@@ -97,6 +100,14 @@ class MQTTService:
 
         async with async_session() as session:
             session.add(reading)
+            # Update sensor node last_seen timestamp
+            node_id = payload.get("node_id")
+            if node_id:
+                await session.execute(
+                    update(SensorNode)
+                    .where(SensorNode.id == node_id)
+                    .values(last_seen=reading.time)
+                )
             await session.commit()
 
         # Broadcast to WebSocket clients

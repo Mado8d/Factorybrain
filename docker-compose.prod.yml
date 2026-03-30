@@ -1,0 +1,223 @@
+services:
+  # ============================================================
+  # TimescaleDB — Time-series + relational database
+  # ============================================================
+  timescaledb:
+    image: timescale/timescaledb:latest-pg16
+    container_name: fb-timescaledb
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-factorybrain}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-factorybrain}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql
+    command: >
+      postgres
+      -c shared_buffers=512MB
+      -c effective_cache_size=1GB
+      -c work_mem=4MB
+      -c maintenance_work_mem=64MB
+      -c max_connections=50
+      -c wal_buffers=16MB
+      -c checkpoint_completion_target=0.9
+      -c random_page_cost=1.1
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-factorybrain}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 1536M
+
+  # ============================================================
+  # Redis — Cache, pub/sub, Celery broker
+  # ============================================================
+  redis:
+    image: redis:7-alpine
+    container_name: fb-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 300M
+
+  # ============================================================
+  # Mosquitto — MQTT broker for sensor telemetry
+  # ============================================================
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: fb-mosquitto
+    restart: unless-stopped
+    ports:
+      - "${MQTT_PORT:-1883}:1883"
+    volumes:
+      - ./scripts/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - mqttdata:/mosquitto/data
+      - mqttlog:/mosquitto/log
+    healthcheck:
+      test: ["CMD", "mosquitto_sub", "-t", "$$SYS/#", "-C", "1", "-i", "healthcheck", "-W", "3"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+
+  # ============================================================
+  # MinIO — Object storage for models, reports, firmware
+  # ============================================================
+  minio:
+    image: minio/minio:latest
+    container_name: fb-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    command: server /data --console-address ":9090"
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  # ============================================================
+  # Backend — FastAPI application
+  # ============================================================
+  backend:
+    build:
+      context: ./backend
+      target: api
+    container_name: fb-backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-factorybrain}:${POSTGRES_PASSWORD}@timescaledb:5432/${POSTGRES_DB:-factorybrain}
+      REDIS_URL: redis://redis:6379/0
+      MQTT_HOST: mosquitto
+      MQTT_PORT: "1883"
+      MINIO_HOST: minio
+      SECRET_KEY: ${SECRET_KEY}
+      ENVIRONMENT: production
+      DEBUG: "false"
+      CORS_ORIGINS: ${DOMAIN_URL:-http://localhost:3000}
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+
+  # ============================================================
+  # Celery Worker — Background task processing
+  # ============================================================
+  celery-worker:
+    build:
+      context: ./backend
+      target: celery-worker
+    container_name: fb-celery-worker
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-factorybrain}:${POSTGRES_PASSWORD}@timescaledb:5432/${POSTGRES_DB:-factorybrain}
+      REDIS_URL: redis://redis:6379/0
+      MQTT_HOST: mosquitto
+      SECRET_KEY: ${SECRET_KEY}
+      ENVIRONMENT: production
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  # ============================================================
+  # Celery Beat — Periodic task scheduler
+  # ============================================================
+  celery-beat:
+    build:
+      context: ./backend
+      target: celery-beat
+    container_name: fb-celery-beat
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-factorybrain}:${POSTGRES_PASSWORD}@timescaledb:5432/${POSTGRES_DB:-factorybrain}
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: ${SECRET_KEY}
+      ENVIRONMENT: production
+    depends_on:
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  # ============================================================
+  # Frontend — Next.js application
+  # ============================================================
+  frontend:
+    build:
+      context: ./frontend
+    container_name: fb-frontend
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: ""
+      NEXT_PUBLIC_WS_URL: ""
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  # ============================================================
+  # Caddy — Reverse proxy with auto-HTTPS
+  # ============================================================
+  caddy:
+    image: caddy:2-alpine
+    container_name: fb-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./scripts/Caddyfile.prod:/etc/caddy/Caddyfile
+      - caddydata:/data
+      - caddyconfig:/config
+    depends_on:
+      - backend
+      - frontend
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+
+volumes:
+  pgdata:
+  redisdata:
+  mqttdata:
+  mqttlog:
+  miniodata:
+  caddydata:
+  caddyconfig:

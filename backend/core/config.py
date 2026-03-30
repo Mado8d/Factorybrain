@@ -44,5 +44,12 @@ class Settings(BaseSettings):
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",")]
 
+    @property
+    def sync_database_url(self) -> str:
+        """Synchronous DB URL for Celery tasks (psycopg2 instead of asyncpg)."""
+        return self.database_url.replace(
+            "postgresql+asyncpg://", "postgresql+psycopg2://"
+        )
+
 
 settings = Settings()
