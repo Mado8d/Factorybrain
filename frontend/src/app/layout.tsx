@@ -6,7 +6,10 @@ const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'FactoryBrain',
-  description: 'Intelligent Manufacturing Platform',
+  description: 'Intelligent Manufacturing Platform — Predictive Maintenance + MES',
+  icons: {
+    icon: '/favicon.svg',
+  },
 };
 
 export default function RootLayout({

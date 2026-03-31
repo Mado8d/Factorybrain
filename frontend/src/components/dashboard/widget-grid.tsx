@@ -246,7 +246,7 @@ export function WidgetGrid({ kpis }: WidgetGridProps) {
 
       {/* Chart grid */}
       {chartWidgets.length > 0 && (
-        <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
           {chartWidgets
             .sort((a, b) => a.position - b.position)
             .map((widget) => (

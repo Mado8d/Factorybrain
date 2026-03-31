@@ -1,6 +1,7 @@
 services:
   # ============================================================
   # TimescaleDB — Time-series + relational database
+  # Tuned for 4GB server with co-tenants
   # ============================================================
   timescaledb:
     image: timescale/timescaledb:latest-pg16
@@ -15,14 +16,15 @@ services:
       - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql
     command: >
       postgres
-      -c shared_buffers=512MB
-      -c effective_cache_size=1GB
-      -c work_mem=4MB
-      -c maintenance_work_mem=64MB
-      -c max_connections=50
-      -c wal_buffers=16MB
+      -c shared_buffers=128MB
+      -c effective_cache_size=256MB
+      -c work_mem=2MB
+      -c maintenance_work_mem=32MB
+      -c max_connections=20
+      -c wal_buffers=4MB
       -c checkpoint_completion_target=0.9
       -c random_page_cost=1.1
+      -c huge_pages=off
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-factorybrain}"]
       interval: 10s
@@ -31,16 +33,16 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1536M
+          memory: 512M
 
   # ============================================================
-  # Redis — Cache, pub/sub, Celery broker
+  # Redis — Celery broker + cache (64MB is plenty for task queue)
   # ============================================================
   redis:
     image: redis:7-alpine
     container_name: fb-redis
     restart: unless-stopped
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    command: redis-server --appendonly yes --maxmemory 64mb --maxmemory-policy allkeys-lru
     volumes:
       - redisdata:/data
     healthcheck:
@@ -51,7 +53,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 300M
+          memory: 96M
 
   # ============================================================
   # Mosquitto — MQTT broker for sensor telemetry
@@ -65,7 +67,6 @@ services:
     volumes:
       - ./scripts/mosquitto.conf:/mosquitto/config/mosquitto.conf
       - mqttdata:/mosquitto/data
-      - mqttlog:/mosquitto/log
     healthcheck:
       test: ["CMD", "mosquitto_sub", "-t", "$$SYS/#", "-C", "1", "-i", "healthcheck", "-W", "3"]
       interval: 30s
@@ -77,30 +78,7 @@ services:
           memory: 64M
 
   # ============================================================
-  # MinIO — Object storage for models, reports, firmware
-  # ============================================================
-  minio:
-    image: minio/minio:latest
-    container_name: fb-minio
-    restart: unless-stopped
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
-    command: server /data --console-address ":9090"
-    volumes:
-      - miniodata:/data
-    healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
-      interval: 30s
-      timeout: 20s
-      retries: 3
-    deploy:
-      resources:
-        limits:
-          memory: 256M
-
-  # ============================================================
-  # Backend — FastAPI application
+  # Backend — FastAPI application (1 worker)
   # ============================================================
   backend:
     build:
@@ -113,7 +91,6 @@ services:
       REDIS_URL: redis://redis:6379/0
       MQTT_HOST: mosquitto
       MQTT_PORT: "1883"
-      MINIO_HOST: minio
       SECRET_KEY: ${SECRET_KEY}
       ENVIRONMENT: production
       DEBUG: "false"
@@ -126,16 +103,16 @@ services:
     deploy:
       resources:
         limits:
-          memory: 384M
+          memory: 256M
 
   # ============================================================
-  # Celery Worker — Background task processing
+  # Celery Worker + Beat (merged, 1 concurrency)
   # ============================================================
-  celery-worker:
+  celery:
     build:
       context: ./backend
       target: celery-worker
-    container_name: fb-celery-worker
+    container_name: fb-celery
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-factorybrain}:${POSTGRES_PASSWORD}@timescaledb:5432/${POSTGRES_DB:-factorybrain}
@@ -151,32 +128,10 @@ services:
     deploy:
       resources:
         limits:
-          memory: 256M
+          memory: 192M
 
   # ============================================================
-  # Celery Beat — Periodic task scheduler
-  # ============================================================
-  celery-beat:
-    build:
-      context: ./backend
-      target: celery-beat
-    container_name: fb-celery-beat
-    restart: unless-stopped
-    environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-factorybrain}:${POSTGRES_PASSWORD}@timescaledb:5432/${POSTGRES_DB:-factorybrain}
-      REDIS_URL: redis://redis:6379/0
-      SECRET_KEY: ${SECRET_KEY}
-      ENVIRONMENT: production
-    depends_on:
-      redis:
-        condition: service_healthy
-    deploy:
-      resources:
-        limits:
-          memory: 128M
-
-  # ============================================================
-  # Frontend — Next.js application
+  # Frontend — Next.js standalone (~50MB RAM)
   # ============================================================
   frontend:
     build:
@@ -191,33 +146,11 @@ services:
         limits:
           memory: 128M
 
-  # ============================================================
-  # Caddy — Reverse proxy with auto-HTTPS
-  # ============================================================
-  caddy:
-    image: caddy:2-alpine
-    container_name: fb-caddy
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./scripts/Caddyfile.prod:/etc/caddy/Caddyfile
-      - caddydata:/data
-      - caddyconfig:/config
-    depends_on:
-      - backend
-      - frontend
-    deploy:
-      resources:
-        limits:
-          memory: 64M
+  # NOTE: Caddy removed — use Coolify's built-in reverse proxy instead.
+  # NOTE: MinIO removed — not needed until report generation is implemented.
+  #       Re-add later or use Hetzner Object Storage (S3-compatible, external).
 
 volumes:
   pgdata:
   redisdata:
   mqttdata:
-  mqttlog:
-  miniodata:
-  caddydata:
-  caddyconfig:

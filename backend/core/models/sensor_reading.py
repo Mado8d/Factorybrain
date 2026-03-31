@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Float, String
+from sqlalchemy import DateTime, Float, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -14,7 +14,7 @@ class SensorReading(Base):
     __tablename__ = "sensor_readings"
 
     # Composite primary key for hypertable (time + node_id)
-    time: Mapped[datetime] = mapped_column(primary_key=True)
+    time: Mapped[datetime] = mapped_column(DateTime(timezone=True), primary_key=True)
     node_id: Mapped[str] = mapped_column(String, primary_key=True)
 
     tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)

@@ -22,7 +22,7 @@ celery_app.conf.update(
     timezone="Europe/Brussels",
     enable_utc=True,
     worker_max_tasks_per_child=100,
-    worker_concurrency=2,
+    worker_concurrency=1,
     beat_schedule={
         "anomaly-threshold-check": {
             "task": "core.tasks.anomaly_checker.check_anomaly_thresholds",

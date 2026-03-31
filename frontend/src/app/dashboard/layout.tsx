@@ -33,7 +33,8 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
+      {/* Sidebar — hidden on mobile */}
+      <aside className="hidden md:flex w-64 bg-white border-r border-gray-200 flex-col">
         <div className="p-6 border-b border-gray-200">
           <h1 className="text-xl font-bold text-brand-700">FactoryBrain</h1>
           <p className="text-xs text-gray-500 mt-1">v0.1.0</p>

@@ -10,8 +10,5 @@ CMD ["uvicorn", "core.main:app", "--host", "0.0.0.0", "--port", "8000", "--worke
 
 FROM base AS celery-worker
 COPY . .
-CMD ["celery", "-A", "core.celery_app:celery_app", "worker", "--loglevel=info", "--concurrency=2", "--max-tasks-per-child=100"]
-
-FROM base AS celery-beat
-COPY . .
-CMD ["celery", "-A", "core.celery_app:celery_app", "beat", "--loglevel=info"]
+# -B flag embeds Beat scheduler into the worker (no separate container needed)
+CMD ["celery", "-A", "core.celery_app:celery_app", "worker", "-B", "--loglevel=info", "--concurrency=1", "--max-tasks-per-child=100"]
