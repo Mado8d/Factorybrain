@@ -3,9 +3,8 @@
  * Handles authentication, requests, and WebSocket connections.
  */
 
-// In development, use relative URLs so Next.js rewrites proxy to the backend
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
-const WS_BASE = process.env.NEXT_PUBLIC_WS_URL || `ws://localhost:8000`;
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const WS_BASE = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000';
 
 export interface User {
   id: string;
@@ -69,8 +68,6 @@ class ApiClient {
     });
 
     if (response.status === 401) {
-      // Don't auto-logout on every 401 — let the auth store handle it
-      this.setToken(null);
       throw new Error('Unauthorized');
     }
 
@@ -125,11 +122,15 @@ class ApiClient {
     node_id?: string;
     node_type?: string;
     hours?: number;
+    start?: string;
+    end?: string;
   }) {
     const searchParams = new URLSearchParams();
     if (params?.node_id) searchParams.set('node_id', params.node_id);
     if (params?.node_type) searchParams.set('node_type', params.node_type);
     if (params?.hours) searchParams.set('hours', String(params.hours));
+    if (params?.start) searchParams.set('start', params.start);
+    if (params?.end) searchParams.set('end', params.end);
     const qs = searchParams.toString();
     return this.request(`/api/dashboard/telemetry-history${qs ? `?${qs}` : ''}`);
   }

@@ -2,38 +2,11 @@
 
 import { useState } from 'react';
 
-interface ReportType {
-  id: string;
-  name: string;
-  description: string;
-  icon: string;
-}
-
-const reportTypes: ReportType[] = [
-  {
-    id: 'machine-health',
-    name: 'Machine Health',
-    description: 'Overzicht van vibratie, anomalie scores en voorspelde levensduur per machine.',
-    icon: '⚙️',
-  },
-  {
-    id: 'energy',
-    name: 'Energierapport',
-    description: 'Grid verbruik, solar productie en verbruik per kanaal over een gekozen periode.',
-    icon: '⚡',
-  },
-  {
-    id: 'maintenance',
-    name: 'Onderhoudsrapport',
-    description: 'Alerts, werkorders, MTTR en MTBF statistieken per machine.',
-    icon: '🔧',
-  },
-  {
-    id: 'oee',
-    name: 'OEE Rapport',
-    description: 'Overall Equipment Effectiveness: beschikbaarheid, prestatie en kwaliteit.',
-    icon: '📊',
-  },
+const reportTypes = [
+  { id: 'machine-health', name: 'Machine Health', description: 'Vibration, anomaly scores, and predicted remaining useful life per machine.', icon: '⚙️' },
+  { id: 'energy', name: 'Energy Report', description: 'Grid consumption, solar production, and per-channel usage over a selected period.', icon: '⚡' },
+  { id: 'maintenance', name: 'Maintenance Report', description: 'Alerts, work orders, MTTR and MTBF statistics per machine.', icon: '🔧' },
+  { id: 'oee', name: 'OEE Report', description: 'Overall Equipment Effectiveness: availability, performance, and quality.', icon: '📊' },
 ];
 
 export default function ReportsPage() {
@@ -41,17 +14,10 @@ export default function ReportsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Rapporten</h1>
-
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">Reports</h1>
       <div className="grid grid-cols-2 gap-4">
         {reportTypes.map((report) => (
-          <button
-            key={report.id}
-            onClick={() => setSelectedReport(report.id)}
-            className={`text-left bg-white rounded-xl border p-6 hover:shadow-md transition-all ${
-              selectedReport === report.id ? 'ring-2 ring-brand-500 border-brand-300' : ''
-            }`}
-          >
+          <button key={report.id} onClick={() => setSelectedReport(report.id)} className={`text-left bg-white rounded-xl border p-6 hover:shadow-md transition-all ${selectedReport === report.id ? 'ring-2 ring-brand-500 border-brand-300' : ''}`}>
             <div className="flex items-start gap-4">
               <span className="text-2xl">{report.icon}</span>
               <div>
@@ -62,27 +28,12 @@ export default function ReportsPage() {
           </button>
         ))}
       </div>
-
       {selectedReport && (
         <div className="mt-8 bg-white rounded-xl border p-8 text-center">
-          <div className="inline-block p-4 bg-gray-50 rounded-full mb-4">
-            <span className="text-3xl">
-              {reportTypes.find((r) => r.id === selectedReport)?.icon}
-            </span>
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900">
-            {reportTypes.find((r) => r.id === selectedReport)?.name}
-          </h3>
-          <p className="text-sm text-gray-500 mt-2 max-w-md mx-auto">
-            Rapportgeneratie wordt beschikbaar in een volgende versie.
-            Dit rapport wordt automatisch als PDF opgeslagen in MinIO.
-          </p>
-          <button
-            disabled
-            className="mt-4 px-6 py-2 bg-brand-600 text-white rounded-lg text-sm opacity-50 cursor-not-allowed"
-          >
-            Rapport genereren
-          </button>
+          <div className="inline-block p-4 bg-gray-50 rounded-full mb-4"><span className="text-3xl">{reportTypes.find((r) => r.id === selectedReport)?.icon}</span></div>
+          <h3 className="text-lg font-semibold text-gray-900">{reportTypes.find((r) => r.id === selectedReport)?.name}</h3>
+          <p className="text-sm text-gray-500 mt-2 max-w-md mx-auto">Report generation will be available in a future version. Reports will be automatically saved as PDF to MinIO.</p>
+          <button disabled className="mt-4 px-6 py-2 bg-brand-600 text-white rounded-lg text-sm opacity-50 cursor-not-allowed">Generate Report</button>
         </div>
       )}
     </div>

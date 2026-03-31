@@ -84,15 +84,30 @@ async def get_telemetry_history(
     db: AsyncSession = Depends(get_db),
     node_id: str | None = Query(None),
     node_type: str | None = Query(None),
-    hours: int = Query(24, ge=1, le=168),
+    hours: int | None = Query(None, ge=1, le=168),
+    start: str | None = Query(None, description="ISO datetime, e.g. 2026-03-30T08:00:00Z"),
+    end: str | None = Query(None, description="ISO datetime, e.g. 2026-03-31T18:00:00Z"),
 ):
-    """Get telemetry time-series for charts. Optionally filter by node_id or node_type."""
+    """Get telemetry time-series for charts. Supports date range or hours-back."""
     await set_tenant_context(db, str(user.tenant_id))
-    since = datetime.now(timezone.utc) - timedelta(hours=hours)
+
+    # Determine time window
+    if start and end:
+        since = datetime.fromisoformat(start.replace("Z", "+00:00"))
+        until = datetime.fromisoformat(end.replace("Z", "+00:00"))
+    else:
+        h = hours or 6
+        until = datetime.now(timezone.utc)
+        since = until - timedelta(hours=h)
+
+    # Scale limit based on time span
+    span_hours = max(1, (until - since).total_seconds() / 3600)
+    max_points = min(500, max(100, int(span_hours * 20)))
 
     query = (
         select(SensorReading)
         .where(SensorReading.time >= since)
+        .where(SensorReading.time <= until)
         .order_by(SensorReading.time.asc())
     )
     if node_id:
@@ -100,7 +115,7 @@ async def get_telemetry_history(
     if node_type:
         query = query.where(SensorReading.node_type == node_type)
 
-    query = query.limit(2000)
+    query = query.limit(max_points)
     result = await db.execute(query)
     rows = result.scalars().all()
 

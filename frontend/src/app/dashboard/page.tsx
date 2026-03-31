@@ -41,11 +41,11 @@ interface TelemetryData {
 }
 
 const statusConfig: Record<string, { color: string; label: string }> = {
-  active: { color: 'bg-green-100 text-green-800 border-green-200', label: 'Actief' },
-  idle: { color: 'bg-gray-100 text-gray-600 border-gray-200', label: 'Stil' },
+  active: { color: 'bg-green-100 text-green-800 border-green-200', label: 'Running' },
+  idle: { color: 'bg-gray-100 text-gray-600 border-gray-200', label: 'Idle' },
   alarm: { color: 'bg-red-100 text-red-800 border-red-200', label: 'Alarm' },
-  maintenance: { color: 'bg-amber-100 text-amber-800 border-amber-200', label: 'Onderhoud' },
-  inactive: { color: 'bg-gray-100 text-gray-400 border-gray-200', label: 'Inactief' },
+  maintenance: { color: 'bg-amber-100 text-amber-800 border-amber-200', label: 'Maintenance' },
+  inactive: { color: 'bg-gray-100 text-gray-400 border-gray-200', label: 'Inactive' },
 };
 
 export default function DashboardPage() {
@@ -57,7 +57,6 @@ export default function DashboardPage() {
 
   const { loadAll, getThreshold, getRefreshInterval, isLoading: dashLoading } = useDashboard();
 
-  // Load dashboard config (widgets + tenant settings)
   useEffect(() => {
     loadAll();
   }, [loadAll]);
@@ -91,7 +90,6 @@ export default function DashboardPage() {
     return () => clearInterval(timer);
   }, []);
 
-  // WebSocket for live updates
   useEffect(() => {
     const ws = api.connectLive((data) => {
       if (data.type === 'telemetry') {
@@ -117,7 +115,6 @@ export default function DashboardPage() {
     );
   }
 
-  // Thresholds from tenant settings (not hardcoded!)
   const vibWarning = getThreshold('vibration_warning');
   const vibCritical = getThreshold('vibration_critical');
   const anomalyWarning = getThreshold('anomaly_warning');
@@ -127,30 +124,30 @@ export default function DashboardPage() {
     <div>
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Fabrieksoverzicht</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Factory Overview</h1>
           <p className="text-sm text-gray-500 mt-1">
-            {time.toLocaleDateString('nl-BE', {
+            {time.toLocaleDateString('en-GB', {
               weekday: 'long',
               day: 'numeric',
               month: 'long',
               year: 'numeric',
             })}
-            {' — '}
-            {time.toLocaleTimeString('nl-BE')}
+            {' \u2014 '}
+            {time.toLocaleTimeString('en-GB')}
           </p>
         </div>
       </div>
 
-      {/* Configurable widget grid (KPIs + charts) */}
+      {/* Configurable widget grid */}
       <WidgetGrid kpis={kpis || {}} />
 
-      {/* Machine grid (structural, not a widget) */}
+      {/* Machine grid */}
       <h2 className="text-lg font-semibold text-gray-900 mt-2 mb-4">Machines</h2>
       {machines.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-xl border">
-          <p className="text-gray-500">Nog geen machines geconfigureerd.</p>
+          <p className="text-gray-500">No machines configured yet.</p>
           <p className="text-sm text-gray-400 mt-1">
-            Voeg machines toe via Instellingen of de API.
+            Add machines via Settings or the API.
           </p>
         </div>
       ) : (
@@ -189,7 +186,7 @@ export default function DashboardPage() {
                     {nodeData.node_type === 'vibesense' && (
                       <>
                         <div>
-                          <p className="text-xs text-gray-400">Vibratie RMS</p>
+                          <p className="text-xs text-gray-400">Vibration RMS</p>
                           <p
                             className={`text-sm font-medium ${
                               (nodeData.vib_rms_x ?? 0) > vibCritical
@@ -199,11 +196,11 @@ export default function DashboardPage() {
                                 : 'text-gray-900'
                             }`}
                           >
-                            {nodeData.vib_rms_x?.toFixed(1) ?? '—'} g
+                            {nodeData.vib_rms_x?.toFixed(1) ?? '\u2014'} g
                           </p>
                         </div>
                         <div>
-                          <p className="text-xs text-gray-400">Anomalie</p>
+                          <p className="text-xs text-gray-400">Anomaly</p>
                           <p
                             className={`text-sm font-medium ${
                               (nodeData.anomaly_score ?? 0) > anomalyCritical
@@ -215,7 +212,7 @@ export default function DashboardPage() {
                           >
                             {nodeData.anomaly_score != null
                               ? `${(nodeData.anomaly_score * 100).toFixed(0)}%`
-                              : '—'}
+                              : '\u2014'}
                           </p>
                         </div>
                       </>
@@ -227,7 +224,7 @@ export default function DashboardPage() {
                           <p className="text-sm font-medium text-gray-900">
                             {nodeData.grid_power_w != null
                               ? `${(nodeData.grid_power_w / 1000).toFixed(1)} kW`
-                              : '—'}
+                              : '\u2014'}
                           </p>
                         </div>
                         <div>
@@ -235,14 +232,14 @@ export default function DashboardPage() {
                           <p className="text-sm font-medium text-green-600">
                             {nodeData.solar_power_w != null
                               ? `${(nodeData.solar_power_w / 1000).toFixed(1)} kW`
-                              : '—'}
+                              : '\u2014'}
                           </p>
                         </div>
                       </>
                     )}
                     {nodeData.temperature_1 != null && (
                       <div>
-                        <p className="text-xs text-gray-400">Temperatuur</p>
+                        <p className="text-xs text-gray-400">Temperature</p>
                         <p className="text-sm font-medium text-gray-900">
                           {nodeData.temperature_1.toFixed(0)}°C
                         </p>
@@ -250,7 +247,7 @@ export default function DashboardPage() {
                     )}
                     {nodeData.current_rms != null && (
                       <div>
-                        <p className="text-xs text-gray-400">Stroom</p>
+                        <p className="text-xs text-gray-400">Current</p>
                         <p className="text-sm font-medium text-gray-900">
                           {nodeData.current_rms.toFixed(1)} A
                         </p>

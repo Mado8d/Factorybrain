@@ -30,6 +30,7 @@ interface ThresholdConfig {
 
 interface FlexibleChartProps {
   data: any[];
+  compareData?: any[];
   chartType: 'line' | 'area' | 'bar';
   dataKeys: DataKeyConfig[];
   title: string;
@@ -40,7 +41,7 @@ interface FlexibleChartProps {
 }
 
 function formatTime(time: string) {
-  return new Date(time).toLocaleTimeString('nl-BE', {
+  return new Date(time).toLocaleTimeString('en-GB', {
     hour: '2-digit',
     minute: '2-digit',
   });
@@ -48,6 +49,7 @@ function formatTime(time: string) {
 
 export function FlexibleChart({
   data,
+  compareData,
   chartType,
   dataKeys,
   title,
@@ -56,58 +58,78 @@ export function FlexibleChart({
   height = 250,
   stacked = false,
 }: FlexibleChartProps) {
-  const formatted = data.map((d) => ({ ...d, time: formatTime(d.time) }));
+  // Merge primary and comparison data by index (aligned by position)
+  const formatted = data.map((d, i) => {
+    const entry: any = { ...d, time: formatTime(d.time) };
+    if (compareData?.[i]) {
+      for (const dk of dataKeys) {
+        entry[`cmp_${dk.key}`] = compareData[i][dk.key];
+      }
+    }
+    return entry;
+  });
 
-  const commonProps = {
-    data: formatted,
-    children: (
-      <>
-        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-        <XAxis dataKey="time" tick={{ fontSize: 11 }} stroke="#9ca3af" />
-        <YAxis
-          tick={{ fontSize: 11 }}
-          stroke="#9ca3af"
-          unit={yAxisUnit ? ` ${yAxisUnit}` : ''}
-        />
-        <Tooltip
-          contentStyle={{ fontSize: 12, borderRadius: 8 }}
-          labelStyle={{ fontWeight: 600 }}
-        />
-        <Legend wrapperStyle={{ fontSize: 12 }} />
-        {thresholds?.map((t, i) => (
-          <ReferenceLine
-            key={i}
-            y={t.value}
-            stroke={t.color}
-            strokeDasharray="5 5"
-            label={{
-              value: t.label,
-              position: 'right',
-              fontSize: 11,
-              fill: t.color,
-            }}
-          />
-        ))}
-      </>
-    ),
-  };
+  const ChartComponent =
+    chartType === 'line' ? LineChart : chartType === 'area' ? AreaChart : BarChart;
 
   const renderDataElements = () => {
-    switch (chartType) {
-      case 'line':
-        return dataKeys.map((dk) => (
-          <Line
+    const elements: React.ReactNode[] = [];
+
+    // Comparison data (dashed, lighter)
+    if (compareData && compareData.length > 0) {
+      for (const dk of dataKeys) {
+        elements.push(
+          chartType === 'bar' ? (
+            <Bar
+              key={`cmp_${dk.key}`}
+              dataKey={`cmp_${dk.key}`}
+              name={`${dk.name} (prev)`}
+              fill={dk.color}
+              fillOpacity={0.2}
+            />
+          ) : chartType === 'area' ? (
+            <Area
+              key={`cmp_${dk.key}`}
+              type="monotone"
+              dataKey={`cmp_${dk.key}`}
+              name={`${dk.name} (prev)`}
+              stroke={dk.color}
+              fill={dk.color}
+              fillOpacity={0.05}
+              strokeWidth={1}
+              strokeDasharray="4 4"
+              dot={false}
+            />
+          ) : (
+            <Line
+              key={`cmp_${dk.key}`}
+              type="monotone"
+              dataKey={`cmp_${dk.key}`}
+              name={`${dk.name} (prev)`}
+              stroke={dk.color}
+              strokeWidth={1}
+              strokeDasharray="4 4"
+              dot={false}
+              strokeOpacity={0.4}
+            />
+          )
+        );
+      }
+    }
+
+    // Primary data
+    for (const dk of dataKeys) {
+      elements.push(
+        chartType === 'bar' ? (
+          <Bar
             key={dk.key}
-            type="monotone"
             dataKey={dk.key}
             name={dk.name}
-            stroke={dk.color}
-            strokeWidth={2}
-            dot={false}
+            fill={dk.color}
+            fillOpacity={0.8}
+            stackId={stacked ? 'stack' : undefined}
           />
-        ));
-      case 'area':
-        return dataKeys.map((dk) => (
+        ) : chartType === 'area' ? (
           <Area
             key={dk.key}
             type="monotone"
@@ -120,27 +142,33 @@ export function FlexibleChart({
             dot={false}
             stackId={stacked ? 'stack' : undefined}
           />
-        ));
-      case 'bar':
-        return dataKeys.map((dk) => (
-          <Bar
+        ) : (
+          <Line
             key={dk.key}
+            type="monotone"
             dataKey={dk.key}
             name={dk.name}
-            fill={dk.color}
-            fillOpacity={0.8}
-            stackId={stacked ? 'stack' : undefined}
+            stroke={dk.color}
+            strokeWidth={2}
+            dot={false}
           />
-        ));
+        )
+      );
     }
-  };
 
-  const ChartComponent =
-    chartType === 'line' ? LineChart : chartType === 'area' ? AreaChart : BarChart;
+    return elements;
+  };
 
   return (
     <div className="bg-white rounded-xl border p-5">
-      <h3 className="text-sm font-semibold text-gray-900 mb-4">{title}</h3>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
+        {compareData && compareData.length > 0 && (
+          <span className="text-xs text-purple-600 bg-purple-50 px-2 py-0.5 rounded">
+            Comparing periods
+          </span>
+        )}
+      </div>
       <ResponsiveContainer width="100%" height={height}>
         <ChartComponent data={formatted}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />

@@ -48,6 +48,5 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 async def set_tenant_context(session: AsyncSession, tenant_id: str) -> None:
     """Set the current tenant for Row-Level Security policies."""
-    await session.execute(
-        f"SET LOCAL app.current_tenant = '{tenant_id}'"  # noqa: S608
-    )
+    from sqlalchemy import text
+    await session.execute(text(f"SET LOCAL app.current_tenant = '{tenant_id}'"))

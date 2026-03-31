@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
-import { VibrationChart } from '@/components/dashboard/vibration-chart';
-import { AnomalyChart } from '@/components/dashboard/anomaly-chart';
+import { FlexibleChart } from '@/components/dashboard/flexible-chart';
+import { DateRangePicker, ComparisonRange } from '@/components/dashboard/date-range-picker';
 
 interface Machine {
   id: string;
@@ -36,7 +36,12 @@ export default function MachineDetailPage() {
   const [nodes, setNodes] = useState<SensorNode[]>([]);
   const [telemetryHistory, setTelemetryHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [hours, setHours] = useState(6);
+  const [dateRange, setDateRange] = useState<ComparisonRange>({
+    primary: {
+      start: new Date(Date.now() - 6 * 3600000).toISOString(),
+      end: new Date().toISOString(),
+    },
+  });
 
   useEffect(() => {
     const load = async () => {
@@ -46,7 +51,6 @@ export default function MachineDetailPage() {
           api.getNodes() as Promise<SensorNode[]>,
         ]);
         setMachine(machineData);
-        // Filter nodes for this machine
         setNodes(nodesData.filter((n: any) => n.machine_id === machineId));
       } catch {
         router.push('/dashboard/machines');
@@ -59,12 +63,15 @@ export default function MachineDetailPage() {
 
   useEffect(() => {
     if (nodes.length === 0) return;
-    // Load telemetry for the first node
     api
-      .getTelemetryHistory({ node_id: nodes[0].id, hours })
+      .getTelemetryHistory({
+        node_id: nodes[0].id,
+        start: dateRange.primary.start,
+        end: dateRange.primary.end,
+      })
       .then((data) => setTelemetryHistory(data as any[]))
       .catch(console.error);
-  }, [nodes, hours]);
+  }, [nodes, dateRange.primary.start, dateRange.primary.end]);
 
   if (loading || !machine) {
     return (
@@ -76,12 +83,8 @@ export default function MachineDetailPage() {
 
   return (
     <div>
-      {/* Header */}
       <div className="flex items-center gap-3 mb-6">
-        <button
-          onClick={() => router.push('/dashboard/machines')}
-          className="text-gray-400 hover:text-gray-600"
-        >
+        <button onClick={() => router.push('/dashboard/machines')} className="text-gray-400 hover:text-gray-600">
           ←
         </button>
         <div>
@@ -94,52 +97,38 @@ export default function MachineDetailPage() {
         </div>
       </div>
 
-      {/* Machine info cards */}
       <div className="grid grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-xl border p-4">
           <p className="text-xs text-gray-500">Status</p>
           <p className="text-lg font-semibold text-gray-900 mt-1 capitalize">{machine.status}</p>
         </div>
         <div className="bg-white rounded-xl border p-4">
-          <p className="text-xs text-gray-500">Vermogen</p>
-          <p className="text-lg font-semibold text-gray-900 mt-1">
-            {machine.rated_power_kw != null ? `${machine.rated_power_kw} kW` : '—'}
-          </p>
+          <p className="text-xs text-gray-500">Rated Power</p>
+          <p className="text-lg font-semibold text-gray-900 mt-1">{machine.rated_power_kw != null ? `${machine.rated_power_kw} kW` : '\u2014'}</p>
         </div>
         <div className="bg-white rounded-xl border p-4">
-          <p className="text-xs text-gray-500">Bouwjaar</p>
-          <p className="text-lg font-semibold text-gray-900 mt-1">
-            {machine.year_installed || '—'}
-          </p>
+          <p className="text-xs text-gray-500">Year Installed</p>
+          <p className="text-lg font-semibold text-gray-900 mt-1">{machine.year_installed || '\u2014'}</p>
         </div>
         <div className="bg-white rounded-xl border p-4">
-          <p className="text-xs text-gray-500">Sensoren</p>
+          <p className="text-xs text-gray-500">Sensors</p>
           <p className="text-lg font-semibold text-gray-900 mt-1">{nodes.length}</p>
         </div>
       </div>
 
-      {/* Sensor nodes */}
       {nodes.length > 0 && (
         <div className="mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-3">Sensor nodes</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-3">Sensor Nodes</h2>
           <div className="grid grid-cols-3 gap-3">
             {nodes.map((node) => (
               <div key={node.id} className="bg-white rounded-xl border p-4">
                 <div className="flex items-center justify-between">
                   <p className="font-medium text-gray-900">{node.id}</p>
-                  <span
-                    className={`w-2 h-2 rounded-full ${
-                      node.is_active ? 'bg-green-500' : 'bg-gray-300'
-                    }`}
-                  />
+                  <span className={`w-2 h-2 rounded-full ${node.is_active ? 'bg-green-500' : 'bg-gray-300'}`} />
                 </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  {node.node_type} · FW {node.firmware_ver || '?'}
-                </p>
+                <p className="text-xs text-gray-500 mt-1">{node.node_type} · FW {node.firmware_ver || '?'}</p>
                 {node.last_seen && (
-                  <p className="text-xs text-gray-400 mt-1">
-                    Laatst gezien: {new Date(node.last_seen).toLocaleString('nl-BE')}
-                  </p>
+                  <p className="text-xs text-gray-400 mt-1">Last seen: {new Date(node.last_seen).toLocaleString('en-GB')}</p>
                 )}
               </div>
             ))}
@@ -147,30 +136,32 @@ export default function MachineDetailPage() {
         </div>
       )}
 
-      {/* Telemetry charts */}
       {telemetryHistory.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold text-gray-900">Telemetrie</h2>
-            <div className="flex gap-2">
-              {[6, 12, 24, 48].map((h) => (
-                <button
-                  key={h}
-                  onClick={() => setHours(h)}
-                  className={`px-3 py-1 text-xs rounded-full transition-colors ${
-                    hours === h
-                      ? 'bg-brand-600 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {h}u
-                </button>
-              ))}
-            </div>
+            <h2 className="text-lg font-semibold text-gray-900">Telemetry</h2>
+          </div>
+          <div className="mb-4">
+            <DateRangePicker value={dateRange} onChange={setDateRange} />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <VibrationChart data={telemetryHistory} />
-            <AnomalyChart data={telemetryHistory} />
+            <FlexibleChart
+              data={telemetryHistory}
+              chartType="line"
+              dataKeys={[
+                { key: 'vib_rms_x', name: 'RMS X', color: '#3b82f6' },
+                { key: 'vib_rms_y', name: 'RMS Y', color: '#10b981' },
+                { key: 'vib_rms_z', name: 'RMS Z', color: '#f59e0b' },
+              ]}
+              title="Vibration Trend"
+            />
+            <FlexibleChart
+              data={telemetryHistory}
+              chartType="area"
+              dataKeys={[{ key: 'anomaly_score', name: 'Anomaly', color: '#8b5cf6' }]}
+              title="Anomaly Score"
+              thresholds={[{ value: 0.5, color: '#ef4444', label: 'Threshold' }]}
+            />
           </div>
         </div>
       )}

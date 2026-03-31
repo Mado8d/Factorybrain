@@ -14,15 +14,14 @@ interface Machine {
   status: string;
   rated_power_kw: number | null;
   year_installed: number | null;
-  created_at: string;
 }
 
 const statusConfig: Record<string, { color: string; label: string }> = {
-  active: { color: 'bg-green-100 text-green-800', label: 'Actief' },
-  idle: { color: 'bg-gray-100 text-gray-600', label: 'Stil' },
+  active: { color: 'bg-green-100 text-green-800', label: 'Running' },
+  idle: { color: 'bg-gray-100 text-gray-600', label: 'Idle' },
   alarm: { color: 'bg-red-100 text-red-800', label: 'Alarm' },
-  maintenance: { color: 'bg-amber-100 text-amber-800', label: 'Onderhoud' },
-  inactive: { color: 'bg-gray-100 text-gray-400', label: 'Inactief' },
+  maintenance: { color: 'bg-amber-100 text-amber-800', label: 'Maintenance' },
+  inactive: { color: 'bg-gray-100 text-gray-400', label: 'Inactive' },
 };
 
 export default function MachinesPage() {
@@ -53,10 +52,8 @@ export default function MachinesPage() {
 
       {machines.length === 0 ? (
         <div className="text-center py-16 bg-white rounded-xl border">
-          <p className="text-gray-500 text-lg">Nog geen machines</p>
-          <p className="text-sm text-gray-400 mt-2">
-            Voeg machines toe via de API of het instellingen-scherm.
-          </p>
+          <p className="text-gray-500 text-lg">No machines yet</p>
+          <p className="text-sm text-gray-400 mt-2">Add machines via the API or settings page.</p>
         </div>
       ) : (
         <div className="bg-white rounded-xl border overflow-hidden">
@@ -65,9 +62,9 @@ export default function MachinesPage() {
               <tr className="border-b bg-gray-50">
                 <th className="text-left text-xs font-medium text-gray-500 px-5 py-3">Machine</th>
                 <th className="text-left text-xs font-medium text-gray-500 px-5 py-3">Type</th>
-                <th className="text-left text-xs font-medium text-gray-500 px-5 py-3">Fabrikant</th>
-                <th className="text-left text-xs font-medium text-gray-500 px-5 py-3">Vermogen</th>
-                <th className="text-left text-xs font-medium text-gray-500 px-5 py-3">Jaar</th>
+                <th className="text-left text-xs font-medium text-gray-500 px-5 py-3">Manufacturer</th>
+                <th className="text-left text-xs font-medium text-gray-500 px-5 py-3">Power</th>
+                <th className="text-left text-xs font-medium text-gray-500 px-5 py-3">Year</th>
                 <th className="text-left text-xs font-medium text-gray-500 px-5 py-3">Status</th>
               </tr>
             </thead>
@@ -75,41 +72,21 @@ export default function MachinesPage() {
               {machines.map((machine) => {
                 const config = statusConfig[machine.status] || statusConfig.inactive;
                 return (
-                  <tr
-                    key={machine.id}
-                    className="border-b last:border-0 hover:bg-gray-50 transition-colors"
-                  >
+                  <tr key={machine.id} className="border-b last:border-0 hover:bg-gray-50 transition-colors">
                     <td className="px-5 py-4">
-                      <Link
-                        href={`/dashboard/machines/${machine.id}`}
-                        className="hover:text-brand-600"
-                      >
+                      <Link href={`/dashboard/machines/${machine.id}`} className="hover:text-brand-600">
                         <p className="font-medium text-gray-900">{machine.name}</p>
-                        {machine.asset_tag && (
-                          <p className="text-xs text-gray-500">{machine.asset_tag}</p>
-                        )}
+                        {machine.asset_tag && <p className="text-xs text-gray-500">{machine.asset_tag}</p>}
                       </Link>
                     </td>
+                    <td className="px-5 py-4 text-sm text-gray-600">{machine.machine_type || '\u2014'}</td>
                     <td className="px-5 py-4 text-sm text-gray-600">
-                      {machine.machine_type || '—'}
+                      {machine.manufacturer ? `${machine.manufacturer}${machine.model ? ` ${machine.model}` : ''}` : '\u2014'}
                     </td>
-                    <td className="px-5 py-4 text-sm text-gray-600">
-                      {machine.manufacturer
-                        ? `${machine.manufacturer}${machine.model ? ` ${machine.model}` : ''}`
-                        : '—'}
-                    </td>
-                    <td className="px-5 py-4 text-sm text-gray-600">
-                      {machine.rated_power_kw != null ? `${machine.rated_power_kw} kW` : '—'}
-                    </td>
-                    <td className="px-5 py-4 text-sm text-gray-600">
-                      {machine.year_installed || '—'}
-                    </td>
+                    <td className="px-5 py-4 text-sm text-gray-600">{machine.rated_power_kw != null ? `${machine.rated_power_kw} kW` : '\u2014'}</td>
+                    <td className="px-5 py-4 text-sm text-gray-600">{machine.year_installed || '\u2014'}</td>
                     <td className="px-5 py-4">
-                      <span
-                        className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${config.color}`}
-                      >
-                        {config.label}
-                      </span>
+                      <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${config.color}`}>{config.label}</span>
                     </td>
                   </tr>
                 );

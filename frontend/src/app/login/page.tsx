@@ -21,7 +21,7 @@ export default function LoginPage() {
       await login(email, password, rememberMe);
       router.push('/dashboard');
     } catch (err: any) {
-      setError(err.message || 'Login mislukt');
+      setError(err.message || 'Login failed');
     } finally {
       setLoading(false);
     }
@@ -31,7 +31,6 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="w-full max-w-sm">
         <div className="bg-white rounded-2xl shadow-lg p-8">
-          {/* Logo */}
           <div className="text-center mb-8">
             <h1 className="text-2xl font-bold text-brand-700">FactoryBrain</h1>
             <p className="text-sm text-gray-500 mt-1">
@@ -39,14 +38,10 @@ export default function LoginPage() {
             </p>
           </div>
 
-          {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                E-mailadres
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                Email address
               </label>
               <input
                 id="email"
@@ -61,11 +56,8 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label
-                htmlFor="password"
-                className="block text-sm font-medium text-gray-700 mb-1"
-              >
-                Wachtwoord
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                Password
               </label>
               <input
                 id="password"
@@ -88,7 +80,7 @@ export default function LoginPage() {
                 className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
               />
               <label htmlFor="rememberMe" className="text-sm text-gray-600">
-                Onthoud me
+                Remember me
               </label>
             </div>
 
@@ -103,7 +95,7 @@ export default function LoginPage() {
               disabled={loading}
               className="w-full py-2.5 bg-brand-600 text-white rounded-lg text-sm font-medium hover:bg-brand-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Bezig met inloggen...' : 'Inloggen'}
+              {loading ? 'Signing in...' : 'Sign in'}
             </button>
           </form>
         </div>
