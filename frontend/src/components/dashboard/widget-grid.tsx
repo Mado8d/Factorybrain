@@ -143,7 +143,7 @@ export function WidgetGrid({ kpis }: WidgetGridProps) {
     const keys = chartWidgets.map(
       (w) => `${w.node_type || 'all'}_${w.node_id || 'all'}`
     );
-    return [...new Set(keys)];
+    return Array.from(new Set(keys));
   }, [widgets]);
 
   // Fetch primary data when date range or widgets change
