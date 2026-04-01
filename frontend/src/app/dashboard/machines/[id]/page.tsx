@@ -6,7 +6,8 @@ import { api } from '@/lib/api';
 import { useAuth } from '@/store/auth';
 import { FlexibleChart } from '@/components/dashboard/flexible-chart';
 import { DateRangePicker, ComparisonRange } from '@/components/dashboard/date-range-picker';
-import { Pencil, Plus, Unplug, Power, PowerOff, ArrowLeft } from 'lucide-react';
+import { Pencil, Plus, Unplug, Power, PowerOff, ArrowLeft, QrCode, Download } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -64,6 +65,7 @@ export default function MachineDetailPage() {
   const [addSensorOpen, setAddSensorOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [unassignNode, setUnassignNode] = useState<SensorNode | null>(null);
+  const [qrOpen, setQrOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [thresholds, setThresholds] = useState<Record<string, { value: number; is_custom: boolean; default: number }> | null>(null);
@@ -241,11 +243,16 @@ export default function MachineDetailPage() {
             </p>
           </div>
         </div>
-        {isAdmin && (
-          <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
-            <Pencil className="h-3.5 w-3.5 mr-1" /> Edit
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => setQrOpen(true)}>
+            <QrCode className="h-3.5 w-3.5 mr-1" /> QR
           </Button>
-        )}
+          {isAdmin && (
+            <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}>
+              <Pencil className="h-3.5 w-3.5 mr-1" /> Edit
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Info Cards */}
@@ -467,6 +474,53 @@ export default function MachineDetailPage() {
           </div>
         </div>
       )}
+
+      {/* QR Code Dialog */}
+      <Dialog open={qrOpen} onOpenChange={setQrOpen}>
+        <DialogContent className="max-w-sm text-center">
+          <DialogHeader>
+            <DialogTitle>QR Code — {machine.name}</DialogTitle>
+            <DialogDescription>Scan to open this machine&apos;s detail page.</DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-center py-4">
+            <div className="bg-white p-4 rounded-lg" id="qr-container">
+              <QRCodeSVG
+                value={typeof window !== 'undefined' ? window.location.href : `${machineId}`}
+                size={200}
+                level="M"
+              />
+              <p className="text-xs text-gray-600 mt-2 font-mono">{machine.asset_tag || machine.name}</p>
+            </div>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => {
+            const svg = document.querySelector('#qr-container svg');
+            if (!svg) return;
+            const svgData = new XMLSerializer().serializeToString(svg);
+            const canvas = document.createElement('canvas');
+            canvas.width = 250; canvas.height = 280;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return;
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, 250, 280);
+            const img = new Image();
+            img.onload = () => {
+              ctx.drawImage(img, 25, 10, 200, 200);
+              ctx.fillStyle = 'black';
+              ctx.font = '12px monospace';
+              ctx.textAlign = 'center';
+              ctx.fillText(machine.asset_tag || machine.name, 125, 240);
+              ctx.fillText(machine.machine_type || '', 125, 258);
+              const link = document.createElement('a');
+              link.download = `qr-${machine.asset_tag || machine.id}.png`;
+              link.href = canvas.toDataURL('image/png');
+              link.click();
+            };
+            img.src = 'data:image/svg+xml;base64,' + btoa(svgData);
+          }}>
+            <Download className="h-3.5 w-3.5 mr-1" /> Download PNG
+          </Button>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit Machine Dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
