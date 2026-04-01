@@ -66,6 +66,8 @@ export default function MachineDetailPage() {
   const [unassignNode, setUnassignNode] = useState<SensorNode | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState('');
+  const [thresholds, setThresholds] = useState<Record<string, { value: number; is_custom: boolean; default: number }> | null>(null);
+  const [editingThresholds, setEditingThresholds] = useState<Record<string, string>>({});
 
   // Add sensor form state
   const [newNodeId, setNewNodeId] = useState('');
@@ -94,6 +96,11 @@ export default function MachineDetailPage() {
       setMachine(machineData);
       setAllNodes(nodesData);
       setNodes(nodesData.filter((n: any) => n.machine_id === machineId));
+      // Load thresholds
+      try {
+        const t = await api.getMachineThresholds(machineId) as Record<string, { value: number; is_custom: boolean; default: number }>;
+        setThresholds(t);
+      } catch { /* ignore if endpoint not available yet */ }
     } catch {
       router.push('/dashboard/machines');
     } finally {
@@ -288,6 +295,72 @@ export default function MachineDetailPage() {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Thresholds */}
+      {thresholds && (
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold text-foreground mb-3">Thresholds</h2>
+          <div className="bg-card rounded-xl border border-border p-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {Object.entries(thresholds).map(([key, t]) => {
+                const label = key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                const isEditing = editingThresholds[key] !== undefined;
+                return (
+                  <div key={key} className={`p-3 rounded-lg ${t.is_custom ? 'bg-brand-600/10 border border-brand-600/30' : 'bg-secondary'}`}>
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-xs text-muted-foreground">{label}</p>
+                      {t.is_custom && <Badge variant="default" className="text-[10px] px-1.5 py-0">Custom</Badge>}
+                    </div>
+                    {isAdmin && isEditing ? (
+                      <div className="flex items-center gap-1 mt-1">
+                        <Input
+                          type="number"
+                          step="0.1"
+                          value={editingThresholds[key]}
+                          onChange={(e) => setEditingThresholds({ ...editingThresholds, [key]: e.target.value })}
+                          className="h-7 text-sm w-20"
+                        />
+                        <Button size="sm" className="h-7 px-2 text-xs" onClick={async () => {
+                          const val = parseFloat(editingThresholds[key]);
+                          if (isNaN(val)) return;
+                          try {
+                            const result = await api.updateMachineThresholds(machineId, { [key]: val }) as any;
+                            setThresholds(result);
+                            showFeedback('Threshold updated');
+                          } catch { showFeedback('Failed'); }
+                          setEditingThresholds(prev => { const n = { ...prev }; delete n[key]; return n; });
+                        }}>OK</Button>
+                        {t.is_custom && (
+                          <Button size="sm" variant="ghost" className="h-7 px-2 text-xs text-muted-foreground" onClick={async () => {
+                            try {
+                              const result = await api.updateMachineThresholds(machineId, { [key]: null }) as any;
+                              setThresholds(result);
+                              showFeedback('Reset to default');
+                            } catch { showFeedback('Failed'); }
+                            setEditingThresholds(prev => { const n = { ...prev }; delete n[key]; return n; });
+                          }}>Reset</Button>
+                        )}
+                        <Button size="sm" variant="ghost" className="h-7 px-1 text-xs" onClick={() => {
+                          setEditingThresholds(prev => { const n = { ...prev }; delete n[key]; return n; });
+                        }}>X</Button>
+                      </div>
+                    ) : (
+                      <p
+                        className={`text-lg font-semibold mt-1 ${isAdmin ? 'cursor-pointer hover:text-brand-400' : ''} ${t.is_custom ? 'text-brand-400' : 'text-foreground'}`}
+                        onClick={() => isAdmin && setEditingThresholds({ ...editingThresholds, [key]: String(t.value) })}
+                      >
+                        {t.value}
+                        {!t.is_custom && <span className="text-xs font-normal text-muted-foreground ml-1">(default)</span>}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+            {isAdmin && <p className="text-xs text-muted-foreground mt-3">Click a value to customize. Custom thresholds override tenant defaults for this machine.</p>}
           </div>
         </div>
       )}

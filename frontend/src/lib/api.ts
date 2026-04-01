@@ -186,6 +186,17 @@ class ApiClient {
     return this.request(`/api/machines/${id}`, { method: 'DELETE' });
   }
 
+  async getMachineThresholds(id: string) {
+    return this.request(`/api/machines/${id}/thresholds`);
+  }
+
+  async updateMachineThresholds(id: string, overrides: Record<string, number | null>) {
+    return this.request(`/api/machines/${id}/thresholds`, {
+      method: 'PUT',
+      body: JSON.stringify(overrides),
+    });
+  }
+
   // --- Plants ---
   async getPlants() {
     return this.request('/api/plants');
