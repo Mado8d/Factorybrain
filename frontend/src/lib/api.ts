@@ -76,6 +76,7 @@ class ApiClient {
       throw new Error(error.detail || `API error: ${response.status}`);
     }
 
+    if (response.status === 204) return undefined as T;
     return response.json();
   }
 
@@ -148,6 +149,43 @@ class ApiClient {
     return this.request(`/api/machines/${id}/telemetry?hours=${hours}`);
   }
 
+  async createMachine(data: {
+    name: string;
+    asset_tag?: string;
+    machine_type?: string;
+    manufacturer?: string;
+    model?: string;
+    year_installed?: number;
+    rated_power_kw?: number;
+    specifications?: Record<string, any>;
+  }) {
+    return this.request('/api/machines', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateMachine(id: string, data: {
+    name?: string;
+    asset_tag?: string;
+    machine_type?: string;
+    manufacturer?: string;
+    model?: string;
+    year_installed?: number;
+    rated_power_kw?: number;
+    status?: string;
+    specifications?: Record<string, any>;
+  }) {
+    return this.request(`/api/machines/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteMachine(id: string) {
+    return this.request(`/api/machines/${id}`, { method: 'DELETE' });
+  }
+
   // --- Plants ---
   async getPlants() {
     return this.request('/api/plants');
@@ -156,6 +194,44 @@ class ApiClient {
   // --- Sensor Nodes ---
   async getNodes() {
     return this.request('/api/nodes');
+  }
+
+  async createNode(data: {
+    id: string;
+    machine_id?: string;
+    node_type?: string;
+    firmware_ver?: string;
+    hw_revision?: string;
+    config?: Record<string, any>;
+  }) {
+    return this.request('/api/nodes', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateNode(id: string, data: {
+    machine_id?: string;
+    firmware_ver?: string;
+    hw_revision?: string;
+    config?: Record<string, any>;
+    is_active?: boolean;
+  }) {
+    return this.request(`/api/nodes/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteNode(id: string) {
+    return this.request(`/api/nodes/${id}`, { method: 'DELETE' });
+  }
+
+  async assignNodeToMachine(nodeId: string, machineId: string | null) {
+    return this.request(`/api/nodes/${nodeId}/assign`, {
+      method: 'PATCH',
+      body: JSON.stringify({ machine_id: machineId }),
+    });
   }
 
   // --- Maintenance ---
