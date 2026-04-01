@@ -120,7 +120,7 @@ async def get_telemetry_history(
 
     # Build filters
     filters = "WHERE time >= :since AND time <= :until"
-    params: dict = {"since": since, "until": until, "bucket": bucket}
+    params: dict = {"since": since, "until": until}
     if node_id:
         filters += " AND node_id = :node_id"
         params["node_id"] = node_id
@@ -129,10 +129,11 @@ async def get_telemetry_history(
         params["node_type"] = node_type
 
     # Use time_bucket for downsampling with AVG aggregation
+    # Note: bucket interval is inserted directly into SQL (not user input, safe)
     from sqlalchemy import text as sa_text
     sql = sa_text(f"""
         SELECT
-            time_bucket(:bucket, time) AS bucket_time,
+            time_bucket(INTERVAL '{bucket}', time) AS bucket_time,
             node_id, node_type,
             AVG(vib_rms_x) AS vib_rms_x,
             AVG(vib_rms_y) AS vib_rms_y,
