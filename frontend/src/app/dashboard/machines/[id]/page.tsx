@@ -84,12 +84,12 @@ export default function MachineDetailPage() {
   return (
     <div>
       <div className="flex items-center gap-3 mb-6">
-        <button onClick={() => router.push('/dashboard/machines')} className="text-gray-400 hover:text-gray-600">
+        <button onClick={() => router.push('/dashboard/machines')} className="text-muted-foreground hover:text-foreground">
           ←
         </button>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{machine.name}</h1>
-          <p className="text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-foreground">{machine.name}</h1>
+          <p className="text-sm text-muted-foreground">
             {machine.asset_tag && `${machine.asset_tag} · `}
             {machine.machine_type || 'Machine'}{' '}
             {machine.manufacturer && `· ${machine.manufacturer} ${machine.model || ''}`}
@@ -98,37 +98,37 @@ export default function MachineDetailPage() {
       </div>
 
       <div className="grid grid-cols-4 gap-4 mb-6">
-        <div className="bg-white rounded-xl border p-4">
-          <p className="text-xs text-gray-500">Status</p>
-          <p className="text-lg font-semibold text-gray-900 mt-1 capitalize">{machine.status}</p>
+        <div className="bg-card rounded-xl border border-border p-4">
+          <p className="text-xs text-muted-foreground">Status</p>
+          <p className="text-lg font-semibold text-foreground mt-1 capitalize">{machine.status}</p>
         </div>
-        <div className="bg-white rounded-xl border p-4">
-          <p className="text-xs text-gray-500">Rated Power</p>
-          <p className="text-lg font-semibold text-gray-900 mt-1">{machine.rated_power_kw != null ? `${machine.rated_power_kw} kW` : '\u2014'}</p>
+        <div className="bg-card rounded-xl border border-border p-4">
+          <p className="text-xs text-muted-foreground">Rated Power</p>
+          <p className="text-lg font-semibold text-foreground mt-1">{machine.rated_power_kw != null ? `${machine.rated_power_kw} kW` : '\u2014'}</p>
         </div>
-        <div className="bg-white rounded-xl border p-4">
-          <p className="text-xs text-gray-500">Year Installed</p>
-          <p className="text-lg font-semibold text-gray-900 mt-1">{machine.year_installed || '\u2014'}</p>
+        <div className="bg-card rounded-xl border border-border p-4">
+          <p className="text-xs text-muted-foreground">Year Installed</p>
+          <p className="text-lg font-semibold text-foreground mt-1">{machine.year_installed || '\u2014'}</p>
         </div>
-        <div className="bg-white rounded-xl border p-4">
-          <p className="text-xs text-gray-500">Sensors</p>
-          <p className="text-lg font-semibold text-gray-900 mt-1">{nodes.length}</p>
+        <div className="bg-card rounded-xl border border-border p-4">
+          <p className="text-xs text-muted-foreground">Sensors</p>
+          <p className="text-lg font-semibold text-foreground mt-1">{nodes.length}</p>
         </div>
       </div>
 
       {nodes.length > 0 && (
         <div className="mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-3">Sensor Nodes</h2>
+          <h2 className="text-lg font-semibold text-foreground mb-3">Sensor Nodes</h2>
           <div className="grid grid-cols-3 gap-3">
             {nodes.map((node) => (
-              <div key={node.id} className="bg-white rounded-xl border p-4">
+              <div key={node.id} className="bg-card rounded-xl border border-border p-4">
                 <div className="flex items-center justify-between">
-                  <p className="font-medium text-gray-900">{node.id}</p>
-                  <span className={`w-2 h-2 rounded-full ${node.is_active ? 'bg-green-500' : 'bg-gray-300'}`} />
+                  <p className="font-medium text-foreground">{node.id}</p>
+                  <span className={`w-2 h-2 rounded-full ${node.is_active ? 'bg-green-500' : 'bg-gray-500'}`} />
                 </div>
-                <p className="text-xs text-gray-500 mt-1">{node.node_type} · FW {node.firmware_ver || '?'}</p>
+                <p className="text-xs text-muted-foreground mt-1">{node.node_type} · FW {node.firmware_ver || '?'}</p>
                 {node.last_seen && (
-                  <p className="text-xs text-gray-400 mt-1">Last seen: {new Date(node.last_seen).toLocaleString('en-GB')}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Last seen: {new Date(node.last_seen).toLocaleString('en-GB')}</p>
                 )}
               </div>
             ))}
@@ -139,7 +139,7 @@ export default function MachineDetailPage() {
       {telemetryHistory.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-semibold text-gray-900">Telemetry</h2>
+            <h2 className="text-lg font-semibold text-foreground">Telemetry</h2>
           </div>
           <div className="mb-4">
             <DateRangePicker value={dateRange} onChange={setDateRange} />

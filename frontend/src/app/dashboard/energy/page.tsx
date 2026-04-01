@@ -44,7 +44,7 @@ export default function EnergyPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Energy</h1>
+        <h1 className="text-2xl font-bold text-foreground">Energy</h1>
       </div>
 
       <div className="mb-6">
@@ -52,21 +52,21 @@ export default function EnergyPage() {
       </div>
 
       <div className="grid grid-cols-4 gap-4 mb-6">
-        <div className="bg-white rounded-xl border p-5">
-          <p className="text-sm text-gray-500">Grid Consumption</p>
-          <p className="text-3xl font-bold text-gray-900 mt-1">{(totalGrid / 1000).toFixed(1)}<span className="text-base font-normal text-gray-400"> kW</span></p>
+        <div className="bg-card rounded-xl border border-border p-5">
+          <p className="text-sm text-muted-foreground">Grid Consumption</p>
+          <p className="text-3xl font-bold text-foreground mt-1">{(totalGrid / 1000).toFixed(1)}<span className="text-base font-normal text-muted-foreground"> kW</span></p>
         </div>
-        <div className="bg-white rounded-xl border p-5">
-          <p className="text-sm text-gray-500">Solar Production</p>
-          <p className="text-3xl font-bold text-green-600 mt-1">{(totalSolar / 1000).toFixed(1)}<span className="text-base font-normal text-green-400"> kW</span></p>
+        <div className="bg-card rounded-xl border border-border p-5">
+          <p className="text-sm text-muted-foreground">Solar Production</p>
+          <p className="text-3xl font-bold text-green-400 mt-1">{(totalSolar / 1000).toFixed(1)}<span className="text-base font-normal text-green-500"> kW</span></p>
         </div>
-        <div className="bg-white rounded-xl border p-5">
-          <p className="text-sm text-gray-500">Net Consumption</p>
-          <p className={`text-3xl font-bold mt-1 ${netPower < 0 ? 'text-green-600' : 'text-gray-900'}`}>{(netPower / 1000).toFixed(1)}<span className="text-base font-normal text-gray-400"> kW</span></p>
+        <div className="bg-card rounded-xl border border-border p-5">
+          <p className="text-sm text-muted-foreground">Net Consumption</p>
+          <p className={`text-3xl font-bold mt-1 ${netPower < 0 ? 'text-green-400' : 'text-foreground'}`}>{(netPower / 1000).toFixed(1)}<span className="text-base font-normal text-muted-foreground"> kW</span></p>
         </div>
-        <div className="bg-white rounded-xl border p-5">
-          <p className="text-sm text-gray-500">EnergySense Nodes</p>
-          <p className="text-3xl font-bold text-gray-900 mt-1">{energyNodes.length}</p>
+        <div className="bg-card rounded-xl border border-border p-5">
+          <p className="text-sm text-muted-foreground">EnergySense Nodes</p>
+          <p className="text-3xl font-bold text-foreground mt-1">{energyNodes.length}</p>
         </div>
       </div>
 
@@ -76,9 +76,9 @@ export default function EnergyPage() {
           <FlexibleChart data={history} chartType="area" dataKeys={[{ key: 'channel_1_w', name: 'Channel 1', color: '#3b82f6' }, { key: 'channel_2_w', name: 'Channel 2', color: '#f59e0b' }, { key: 'channel_3_w', name: 'Channel 3', color: '#10b981' }, { key: 'channel_4_w', name: 'Channel 4', color: '#8b5cf6' }]} title="Consumption by Channel" stacked />
         </div>
       ) : (
-        <div className="text-center py-12 bg-white rounded-xl border">
-          <p className="text-gray-500">No energy data available</p>
-          <p className="text-sm text-gray-400 mt-1">Connect an EnergySense node or run the simulator.</p>
+        <div className="text-center py-12 bg-card rounded-xl border border-border">
+          <p className="text-muted-foreground">No energy data available</p>
+          <p className="text-sm text-muted-foreground mt-1">Connect an EnergySense node or run the simulator.</p>
         </div>
       )}
     </div>

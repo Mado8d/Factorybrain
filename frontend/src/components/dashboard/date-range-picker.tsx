@@ -107,7 +107,7 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
             className={`px-3 py-1.5 text-xs rounded-md transition-colors ${
               spanHours === p.hours && !showCustom
                 ? 'bg-brand-600 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                : 'bg-secondary text-muted-foreground hover:bg-accent'
             }`}
           >
             {p.label}
@@ -121,7 +121,7 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
         className={`px-3 py-1.5 text-xs rounded-md transition-colors ${
           showCustom
             ? 'bg-brand-600 text-white'
-            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            : 'bg-secondary text-muted-foreground hover:bg-accent'
         }`}
       >
         Custom
@@ -132,8 +132,8 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
         onClick={toggleCompare}
         className={`px-3 py-1.5 text-xs rounded-md transition-colors ${
           compareEnabled
-            ? 'bg-purple-600 text-white'
-            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            ? 'bg-brand-600 text-white'
+            : 'bg-secondary text-muted-foreground hover:bg-accent'
         }`}
       >
         Compare
@@ -141,39 +141,39 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
 
       {/* Custom date inputs */}
       {showCustom && (
-        <div className="w-full mt-2 p-3 bg-white rounded-lg border space-y-3">
+        <div className="w-full mt-2 p-3 bg-card rounded-lg border border-border space-y-3">
           <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-500 w-16">From</span>
+            <span className="text-xs text-muted-foreground w-16">From</span>
             <input
               type="datetime-local"
               value={toLocalDatetime(value.primary.start)}
               onChange={(e) => handleCustomChange('start', e.target.value, 'primary')}
-              className="px-2 py-1 text-xs border rounded-md"
+              className="px-2 py-1 text-xs border border-border bg-card text-foreground rounded-md"
             />
-            <span className="text-xs text-gray-500 w-8">To</span>
+            <span className="text-xs text-muted-foreground w-8">To</span>
             <input
               type="datetime-local"
               value={toLocalDatetime(value.primary.end)}
               onChange={(e) => handleCustomChange('end', e.target.value, 'primary')}
-              className="px-2 py-1 text-xs border rounded-md"
+              className="px-2 py-1 text-xs border border-border bg-card text-foreground rounded-md"
             />
           </div>
 
           {compareEnabled && value.compare && (
-            <div className="flex items-center gap-3 pt-2 border-t">
-              <span className="text-xs text-purple-600 w-16 font-medium">Compare</span>
+            <div className="flex items-center gap-3 pt-2 border-t border-border">
+              <span className="text-xs text-brand-400 w-16 font-medium">Compare</span>
               <input
                 type="datetime-local"
                 value={toLocalDatetime(value.compare.start)}
                 onChange={(e) => handleCustomChange('start', e.target.value, 'compare')}
-                className="px-2 py-1 text-xs border border-purple-200 rounded-md"
+                className="px-2 py-1 text-xs border border-brand-600/30 bg-card text-foreground rounded-md"
               />
-              <span className="text-xs text-gray-500 w-8">To</span>
+              <span className="text-xs text-muted-foreground w-8">To</span>
               <input
                 type="datetime-local"
                 value={toLocalDatetime(value.compare.end)}
                 onChange={(e) => handleCustomChange('end', e.target.value, 'compare')}
-                className="px-2 py-1 text-xs border border-purple-200 rounded-md"
+                className="px-2 py-1 text-xs border border-brand-600/30 bg-card text-foreground rounded-md"
               />
             </div>
           )}

@@ -57,12 +57,12 @@ function KPIWidget({ widget, kpis }: { widget: WidgetConfig; kpis: Record<string
   const isAlert = widget.metric === 'open_alerts' && (value ?? 0) > 0;
 
   return (
-    <div className={`rounded-xl border p-5 ${isAlert ? 'bg-red-50 border-red-200' : 'bg-white'}`}>
-      <p className="text-sm text-gray-500">{widget.title}</p>
-      <p className={`text-3xl font-bold mt-1 ${isAlert ? 'text-red-700' : 'text-gray-900'}`}>
+    <div className={`rounded-xl border p-5 ${isAlert ? 'bg-red-500/10 border-red-500/30' : 'bg-card border-border'}`}>
+      <p className="text-sm text-muted-foreground">{widget.title}</p>
+      <p className={`text-3xl font-bold mt-1 ${isAlert ? 'text-red-400' : 'text-foreground'}`}>
         {value != null ? (typeof value === 'number' && !Number.isInteger(value) ? value.toFixed(1) : value) : '\u2014'}
-        {widget.metric === 'total_power_kw' && <span className="text-base font-normal text-gray-400"> kW</span>}
-        {widget.metric === 'avg_oee' && value != null && <span className="text-base font-normal text-gray-400">%</span>}
+        {widget.metric === 'total_power_kw' && <span className="text-base font-normal text-muted-foreground"> kW</span>}
+        {widget.metric === 'avg_oee' && value != null && <span className="text-base font-normal text-muted-foreground">%</span>}
       </p>
     </div>
   );
@@ -96,7 +96,7 @@ function ChartWidget({
               className={`px-2 py-0.5 text-xs rounded transition-colors ${
                 (widget.chart_type || 'line') === opt.value
                   ? 'bg-brand-600 text-white'
-                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                  : 'bg-secondary text-muted-foreground hover:bg-accent'
               }`}
             >
               {opt.label}
@@ -227,7 +227,7 @@ export function WidgetGrid({ kpis }: WidgetGridProps) {
                 <KPIWidget widget={widget} kpis={kpis} />
                 <button
                   onClick={() => removeWidget(widget.id)}
-                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 text-xs transition-opacity"
+                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-400 text-xs transition-opacity"
                   title="Remove widget"
                 >
                   ✕
@@ -262,7 +262,7 @@ export function WidgetGrid({ kpis }: WidgetGridProps) {
                 />
                 <button
                   onClick={() => removeWidget(widget.id)}
-                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 text-xs transition-opacity bg-white rounded-full w-5 h-5 flex items-center justify-center shadow"
+                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-400 text-xs transition-opacity bg-card rounded-full w-5 h-5 flex items-center justify-center border border-border"
                   title="Remove widget"
                 >
                   ✕
@@ -276,23 +276,23 @@ export function WidgetGrid({ kpis }: WidgetGridProps) {
       <div className="relative">
         <button
           onClick={() => setShowAddDialog(!showAddDialog)}
-          className="w-full py-3 border-2 border-dashed rounded-xl text-sm text-gray-400 hover:text-brand-600 hover:border-brand-300 transition-colors"
+          className="w-full py-3 border-2 border-dashed border-border rounded-xl text-sm text-muted-foreground hover:text-brand-400 hover:border-brand-600/50 transition-colors"
         >
           + Add Widget
         </button>
 
         {showAddDialog && (
-          <div className="absolute top-full mt-2 left-0 right-0 bg-white rounded-xl border shadow-lg p-4 z-10">
-            <h4 className="text-sm font-semibold text-gray-900 mb-3">Choose widget type</h4>
+          <div className="absolute top-full mt-2 left-0 right-0 bg-card rounded-xl border border-border p-4 z-10">
+            <h4 className="text-sm font-semibold text-foreground mb-3">Choose widget type</h4>
             <div className="grid grid-cols-3 gap-2">
               {WIDGET_TEMPLATES.map((tpl, i) => (
                 <button
                   key={i}
                   onClick={() => handleAddWidget(tpl)}
-                  className="text-left p-3 rounded-lg border hover:border-brand-300 hover:bg-brand-50 transition-colors"
+                  className="text-left p-3 rounded-lg border border-border hover:border-brand-600/50 hover:bg-brand-600/10 transition-colors"
                 >
-                  <p className="text-sm font-medium text-gray-900">{tpl.title}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">
+                  <p className="text-sm font-medium text-foreground">{tpl.title}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
                     {tpl.type === 'kpi' ? 'KPI' : tpl.chart_type}
                     {tpl.node_type ? ` \u00b7 ${tpl.node_type}` : ''}
                   </p>
@@ -301,7 +301,7 @@ export function WidgetGrid({ kpis }: WidgetGridProps) {
             </div>
             <button
               onClick={() => setShowAddDialog(false)}
-              className="mt-3 w-full py-1.5 text-xs text-gray-500 hover:text-gray-700"
+              className="mt-3 w-full py-1.5 text-xs text-muted-foreground hover:text-foreground"
             >
               Cancel
             </button>

@@ -41,11 +41,11 @@ interface TelemetryData {
 }
 
 const statusConfig: Record<string, { color: string; label: string }> = {
-  active: { color: 'bg-green-100 text-green-800 border-green-200', label: 'Running' },
-  idle: { color: 'bg-gray-100 text-gray-600 border-gray-200', label: 'Idle' },
-  alarm: { color: 'bg-red-100 text-red-800 border-red-200', label: 'Alarm' },
-  maintenance: { color: 'bg-amber-100 text-amber-800 border-amber-200', label: 'Maintenance' },
-  inactive: { color: 'bg-gray-100 text-gray-400 border-gray-200', label: 'Inactive' },
+  active: { color: 'bg-green-500/20 text-green-400 border-green-500/30', label: 'Running' },
+  idle: { color: 'bg-muted text-muted-foreground border-border', label: 'Idle' },
+  alarm: { color: 'bg-red-500/20 text-red-400 border-red-500/30', label: 'Alarm' },
+  maintenance: { color: 'bg-amber-500/20 text-amber-400 border-amber-500/30', label: 'Maintenance' },
+  inactive: { color: 'bg-muted text-muted-foreground/50 border-border', label: 'Inactive' },
 };
 
 export default function DashboardPage() {
@@ -124,8 +124,8 @@ export default function DashboardPage() {
     <div>
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Factory Overview</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-2xl font-bold text-foreground">Factory Overview</h1>
+          <p className="text-sm text-muted-foreground mt-1">
             {time.toLocaleDateString('en-GB', {
               weekday: 'long',
               day: 'numeric',
@@ -142,11 +142,11 @@ export default function DashboardPage() {
       <WidgetGrid kpis={kpis || {}} />
 
       {/* Machine grid */}
-      <h2 className="text-lg font-semibold text-gray-900 mt-2 mb-4">Machines</h2>
+      <h2 className="text-lg font-semibold text-foreground mt-2 mb-4">Machines</h2>
       {machines.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-xl border">
-          <p className="text-gray-500">No machines configured yet.</p>
-          <p className="text-sm text-gray-400 mt-1">
+        <div className="text-center py-12 bg-card rounded-xl border border-border">
+          <p className="text-muted-foreground">No machines configured yet.</p>
+          <p className="text-sm text-muted-foreground mt-1">
             Add machines via Settings or the API.
           </p>
         </div>
@@ -163,16 +163,16 @@ export default function DashboardPage() {
             return (
               <div
                 key={machine.id}
-                className={`bg-white rounded-xl border p-5 hover:shadow-md transition-shadow cursor-pointer ${
-                  machine.status === 'alarm' ? 'border-red-300 ring-1 ring-red-100' : ''
+                className={`bg-card rounded-xl border border-border p-5 hover:border-border/80 transition-colors cursor-pointer ${
+                  machine.status === 'alarm' ? 'border-red-500/50 ring-1 ring-red-500/20' : ''
                 }`}
               >
                 <div className="flex items-center justify-between mb-3">
                   <div>
-                    <p className="font-semibold text-gray-900">
+                    <p className="font-semibold text-foreground">
                       {machine.asset_tag || machine.id.slice(0, 8)}
                     </p>
-                    <p className="text-sm text-gray-500">{machine.name}</p>
+                    <p className="text-sm text-muted-foreground">{machine.name}</p>
                   </div>
                   <span
                     className={`px-2.5 py-1 rounded-full text-xs font-medium border ${config.color}`}
@@ -182,32 +182,32 @@ export default function DashboardPage() {
                 </div>
 
                 {nodeData && machine.status !== 'maintenance' && (
-                  <div className="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-gray-100">
+                  <div className="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-border">
                     {nodeData.node_type === 'vibesense' && (
                       <>
                         <div>
-                          <p className="text-xs text-gray-400">Vibration RMS</p>
+                          <p className="text-xs text-muted-foreground">Vibration RMS</p>
                           <p
                             className={`text-sm font-medium ${
                               (nodeData.vib_rms_x ?? 0) > vibCritical
-                                ? 'text-red-600'
+                                ? 'text-red-400'
                                 : (nodeData.vib_rms_x ?? 0) > vibWarning
-                                ? 'text-amber-600'
-                                : 'text-gray-900'
+                                ? 'text-amber-400'
+                                : 'text-foreground'
                             }`}
                           >
                             {nodeData.vib_rms_x?.toFixed(1) ?? '\u2014'} g
                           </p>
                         </div>
                         <div>
-                          <p className="text-xs text-gray-400">Anomaly</p>
+                          <p className="text-xs text-muted-foreground">Anomaly</p>
                           <p
                             className={`text-sm font-medium ${
                               (nodeData.anomaly_score ?? 0) > anomalyCritical
-                                ? 'text-red-600'
+                                ? 'text-red-400'
                                 : (nodeData.anomaly_score ?? 0) > anomalyWarning
-                                ? 'text-amber-600'
-                                : 'text-gray-900'
+                                ? 'text-amber-400'
+                                : 'text-foreground'
                             }`}
                           >
                             {nodeData.anomaly_score != null
@@ -220,16 +220,16 @@ export default function DashboardPage() {
                     {nodeData.node_type === 'energysense' && (
                       <>
                         <div>
-                          <p className="text-xs text-gray-400">Grid</p>
-                          <p className="text-sm font-medium text-gray-900">
+                          <p className="text-xs text-muted-foreground">Grid</p>
+                          <p className="text-sm font-medium text-foreground">
                             {nodeData.grid_power_w != null
                               ? `${(nodeData.grid_power_w / 1000).toFixed(1)} kW`
                               : '\u2014'}
                           </p>
                         </div>
                         <div>
-                          <p className="text-xs text-gray-400">Solar</p>
-                          <p className="text-sm font-medium text-green-600">
+                          <p className="text-xs text-muted-foreground">Solar</p>
+                          <p className="text-sm font-medium text-green-400">
                             {nodeData.solar_power_w != null
                               ? `${(nodeData.solar_power_w / 1000).toFixed(1)} kW`
                               : '\u2014'}
@@ -239,16 +239,16 @@ export default function DashboardPage() {
                     )}
                     {nodeData.temperature_1 != null && (
                       <div>
-                        <p className="text-xs text-gray-400">Temperature</p>
-                        <p className="text-sm font-medium text-gray-900">
+                        <p className="text-xs text-muted-foreground">Temperature</p>
+                        <p className="text-sm font-medium text-foreground">
                           {nodeData.temperature_1.toFixed(0)}°C
                         </p>
                       </div>
                     )}
                     {nodeData.current_rms != null && (
                       <div>
-                        <p className="text-xs text-gray-400">Current</p>
-                        <p className="text-sm font-medium text-gray-900">
+                        <p className="text-xs text-muted-foreground">Current</p>
+                        <p className="text-sm font-medium text-foreground">
                           {nodeData.current_rms.toFixed(1)} A
                         </p>
                       </div>

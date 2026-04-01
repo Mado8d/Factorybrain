@@ -160,29 +160,36 @@ export function FlexibleChart({
   };
 
   return (
-    <div className="bg-white rounded-xl border p-5">
+    <div className="bg-card rounded-xl border border-border p-5">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
+        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
         {compareData && compareData.length > 0 && (
-          <span className="text-xs text-purple-600 bg-purple-50 px-2 py-0.5 rounded">
+          <span className="text-xs text-brand-400 bg-brand-600/20 px-2 py-0.5 rounded">
             Comparing periods
           </span>
         )}
       </div>
       <ResponsiveContainer width="100%" height={height}>
         <ChartComponent data={formatted}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-          <XAxis dataKey="time" tick={{ fontSize: 11 }} stroke="#9ca3af" />
+          <CartesianGrid strokeDasharray="3 3" stroke="#2a2a3e" />
+          <XAxis dataKey="time" tick={{ fontSize: 11, fill: '#a1a1aa' }} stroke="#71717a" />
           <YAxis
-            tick={{ fontSize: 11 }}
-            stroke="#9ca3af"
+            tick={{ fontSize: 11, fill: '#a1a1aa' }}
+            stroke="#71717a"
             unit={yAxisUnit ? ` ${yAxisUnit}` : ''}
           />
           <Tooltip
-            contentStyle={{ fontSize: 12, borderRadius: 8 }}
-            labelStyle={{ fontWeight: 600 }}
+            contentStyle={{
+              fontSize: 12,
+              borderRadius: 8,
+              backgroundColor: '#1a1a2e',
+              border: '1px solid #2a2a3e',
+              color: '#e4e4e7',
+            }}
+            labelStyle={{ fontWeight: 600, color: '#e4e4e7' }}
+            itemStyle={{ color: '#a1a1aa' }}
           />
-          <Legend wrapperStyle={{ fontSize: 12 }} />
+          <Legend wrapperStyle={{ fontSize: 12, color: '#a1a1aa' }} />
           {thresholds?.map((t, i) => (
             <ReferenceLine
               key={i}

@@ -17,11 +17,11 @@ interface Machine {
 }
 
 const statusConfig: Record<string, { color: string; label: string }> = {
-  active: { color: 'bg-green-100 text-green-800', label: 'Running' },
-  idle: { color: 'bg-gray-100 text-gray-600', label: 'Idle' },
-  alarm: { color: 'bg-red-100 text-red-800', label: 'Alarm' },
-  maintenance: { color: 'bg-amber-100 text-amber-800', label: 'Maintenance' },
-  inactive: { color: 'bg-gray-100 text-gray-400', label: 'Inactive' },
+  active: { color: 'bg-green-500/20 text-green-400', label: 'Running' },
+  idle: { color: 'bg-muted text-muted-foreground', label: 'Idle' },
+  alarm: { color: 'bg-red-500/20 text-red-400', label: 'Alarm' },
+  maintenance: { color: 'bg-amber-500/20 text-amber-400', label: 'Maintenance' },
+  inactive: { color: 'bg-muted text-muted-foreground/50', label: 'Inactive' },
 };
 
 export default function MachinesPage() {
@@ -46,45 +46,45 @@ export default function MachinesPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Machines</h1>
-        <span className="text-sm text-gray-500">{machines.length} machines</span>
+        <h1 className="text-2xl font-bold text-foreground">Machines</h1>
+        <span className="text-sm text-muted-foreground">{machines.length} machines</span>
       </div>
 
       {machines.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-xl border">
-          <p className="text-gray-500 text-lg">No machines yet</p>
-          <p className="text-sm text-gray-400 mt-2">Add machines via the API or settings page.</p>
+        <div className="text-center py-16 bg-card rounded-xl border border-border">
+          <p className="text-muted-foreground text-lg">No machines yet</p>
+          <p className="text-sm text-muted-foreground mt-2">Add machines via the API or settings page.</p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border overflow-hidden">
+        <div className="bg-card rounded-xl border border-border overflow-hidden">
           <table className="w-full">
             <thead>
-              <tr className="border-b bg-gray-50">
-                <th className="text-left text-xs font-medium text-gray-500 px-5 py-3">Machine</th>
-                <th className="text-left text-xs font-medium text-gray-500 px-5 py-3">Type</th>
-                <th className="text-left text-xs font-medium text-gray-500 px-5 py-3">Manufacturer</th>
-                <th className="text-left text-xs font-medium text-gray-500 px-5 py-3">Power</th>
-                <th className="text-left text-xs font-medium text-gray-500 px-5 py-3">Year</th>
-                <th className="text-left text-xs font-medium text-gray-500 px-5 py-3">Status</th>
+              <tr className="border-b border-border bg-secondary">
+                <th className="text-left text-xs font-medium text-muted-foreground px-5 py-3">Machine</th>
+                <th className="text-left text-xs font-medium text-muted-foreground px-5 py-3">Type</th>
+                <th className="text-left text-xs font-medium text-muted-foreground px-5 py-3">Manufacturer</th>
+                <th className="text-left text-xs font-medium text-muted-foreground px-5 py-3">Power</th>
+                <th className="text-left text-xs font-medium text-muted-foreground px-5 py-3">Year</th>
+                <th className="text-left text-xs font-medium text-muted-foreground px-5 py-3">Status</th>
               </tr>
             </thead>
             <tbody>
               {machines.map((machine) => {
                 const config = statusConfig[machine.status] || statusConfig.inactive;
                 return (
-                  <tr key={machine.id} className="border-b last:border-0 hover:bg-gray-50 transition-colors">
+                  <tr key={machine.id} className="border-b border-border last:border-0 hover:bg-accent transition-colors">
                     <td className="px-5 py-4">
-                      <Link href={`/dashboard/machines/${machine.id}`} className="hover:text-brand-600">
-                        <p className="font-medium text-gray-900">{machine.name}</p>
-                        {machine.asset_tag && <p className="text-xs text-gray-500">{machine.asset_tag}</p>}
+                      <Link href={`/dashboard/machines/${machine.id}`} className="hover:text-brand-400">
+                        <p className="font-medium text-foreground">{machine.name}</p>
+                        {machine.asset_tag && <p className="text-xs text-muted-foreground">{machine.asset_tag}</p>}
                       </Link>
                     </td>
-                    <td className="px-5 py-4 text-sm text-gray-600">{machine.machine_type || '\u2014'}</td>
-                    <td className="px-5 py-4 text-sm text-gray-600">
+                    <td className="px-5 py-4 text-sm text-muted-foreground">{machine.machine_type || '\u2014'}</td>
+                    <td className="px-5 py-4 text-sm text-muted-foreground">
                       {machine.manufacturer ? `${machine.manufacturer}${machine.model ? ` ${machine.model}` : ''}` : '\u2014'}
                     </td>
-                    <td className="px-5 py-4 text-sm text-gray-600">{machine.rated_power_kw != null ? `${machine.rated_power_kw} kW` : '\u2014'}</td>
-                    <td className="px-5 py-4 text-sm text-gray-600">{machine.year_installed || '\u2014'}</td>
+                    <td className="px-5 py-4 text-sm text-muted-foreground">{machine.rated_power_kw != null ? `${machine.rated_power_kw} kW` : '\u2014'}</td>
+                    <td className="px-5 py-4 text-sm text-muted-foreground">{machine.year_installed || '\u2014'}</td>
                     <td className="px-5 py-4">
                       <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${config.color}`}>{config.label}</span>
                     </td>
