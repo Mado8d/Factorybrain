@@ -1,6 +1,7 @@
 """Sensor node management routes."""
 
 import uuid
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -8,10 +9,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.auth.routes import CurrentUser, require_role
 from core.database import get_db, set_tenant_context
+from core.models.user import User
 from core.schemas.sensor_node import SensorNodeCreate, SensorNodeResponse, SensorNodeUpdate
 from core.services import device_service
 
 router = APIRouter()
+
+AdminUser = Annotated[User, Depends(require_role("admin", "manager"))]
 
 
 class AssignRequest(BaseModel):
@@ -38,7 +42,7 @@ async def get_node(node_id: str, user: CurrentUser, db: AsyncSession = Depends(g
 @router.post("/", response_model=SensorNodeResponse, status_code=201)
 async def create_node(
     data: SensorNodeCreate,
-    user: CurrentUser = Depends(require_role("admin", "manager")),
+    user: AdminUser,
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new sensor node."""
@@ -50,7 +54,7 @@ async def create_node(
 async def update_node(
     node_id: str,
     data: SensorNodeUpdate,
-    user: CurrentUser = Depends(require_role("admin", "manager")),
+    user: AdminUser,
     db: AsyncSession = Depends(get_db),
 ):
     """Update a sensor node."""
@@ -64,7 +68,7 @@ async def update_node(
 @router.delete("/{node_id}", status_code=204)
 async def delete_node(
     node_id: str,
-    user: CurrentUser = Depends(require_role("admin", "manager")),
+    user: AdminUser,
     db: AsyncSession = Depends(get_db),
 ):
     """Delete a sensor node."""
@@ -79,7 +83,7 @@ async def delete_node(
 async def assign_node(
     node_id: str,
     data: AssignRequest,
-    user: CurrentUser = Depends(require_role("admin", "manager")),
+    user: AdminUser,
     db: AsyncSession = Depends(get_db),
 ):
     """Assign or unassign a sensor node to/from a machine."""
