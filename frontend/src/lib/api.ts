@@ -327,6 +327,7 @@ class ApiClient {
     root_cause?: string;
     labor_hours?: number;
     total_cost?: number;
+    checklist?: { step: string; required: boolean; completed: boolean }[];
   }) {
     return this.request(`/api/maintenance/work-orders/${id}`, {
       method: 'PATCH',

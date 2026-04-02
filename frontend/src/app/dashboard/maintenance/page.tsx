@@ -95,6 +95,7 @@ export default function MaintenancePage() {
   const [editStatus, setEditStatus] = useState('');
   const [editWorkPerformed, setEditWorkPerformed] = useState('');
   const [editRootCause, setEditRootCause] = useState('');
+  const [editChecklist, setEditChecklist] = useState<{ step: string; required: boolean; completed: boolean }[]>([]);
 
   const showFeedback = (msg: string) => {
     setFeedback(msg);
@@ -196,11 +197,12 @@ export default function MaintenancePage() {
     } catch { showFeedback('Failed'); }
   };
 
-  const openEditWo = (wo: WorkOrder) => {
+  const openEditWo = (wo: any) => {
     setEditWo(wo);
     setEditStatus(wo.status);
     setEditWorkPerformed('');
     setEditRootCause('');
+    setEditChecklist(wo.checklist || []);
   };
 
   const handleUpdateWo = async () => {
@@ -210,6 +212,7 @@ export default function MaintenancePage() {
       const data: any = { status: editStatus };
       if (editWorkPerformed.trim()) data.work_performed = editWorkPerformed.trim();
       if (editRootCause.trim()) data.root_cause = editRootCause.trim();
+      if (editChecklist.length > 0) data.checklist = editChecklist;
       await api.updateWorkOrder(editWo.id, data);
       setEditWo(null);
       await loadData();
@@ -569,6 +572,32 @@ export default function MaintenancePage() {
                   </SelectContent>
                 </Select>
               </div>
+              {/* Checklist */}
+              {editChecklist.length > 0 && (
+                <div>
+                  <Label>Checklist ({editChecklist.filter(c => c.completed).length}/{editChecklist.length})</Label>
+                  <div className="mt-2 space-y-1.5 bg-secondary rounded-lg p-3">
+                    {editChecklist.map((item, i) => (
+                      <label key={i} className="flex items-start gap-2 cursor-pointer group">
+                        <input
+                          type="checkbox"
+                          checked={item.completed}
+                          onChange={() => {
+                            const updated = [...editChecklist];
+                            updated[i] = { ...updated[i], completed: !updated[i].completed };
+                            setEditChecklist(updated);
+                          }}
+                          className="mt-0.5 h-4 w-4 rounded border-border bg-card text-brand-600 focus:ring-brand-500"
+                        />
+                        <span className={`text-sm ${item.completed ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
+                          {item.step}
+                          {item.required && <span className="text-red-400 ml-1">*</span>}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
               {(editStatus === 'completed' || editStatus === 'in_progress') && (
                 <>
                   <div>

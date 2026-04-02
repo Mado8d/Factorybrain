@@ -233,6 +233,7 @@ class MaintenanceWorkOrder(Base):
     completed_at: Mapped[datetime | None] = mapped_column(nullable=True)
     work_performed: Mapped[str | None] = mapped_column(String, nullable=True)
     root_cause: Mapped[str | None] = mapped_column(String, nullable=True)
+    checklist: Mapped[list | None] = mapped_column(JSONB, nullable=True)  # [{step, required, completed}]
     parts_used: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     labor_hours: Mapped[Decimal | None] = mapped_column(Numeric(6, 2), nullable=True)
     total_cost: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)

@@ -53,6 +53,7 @@ class WorkOrderCreate(BaseModel):
     priority: str = "medium"
     category: str | None = None
     requested_date: date | None = None
+    checklist: list[dict] | None = None
 
 
 class WorkOrderUpdate(BaseModel):
@@ -67,6 +68,7 @@ class WorkOrderUpdate(BaseModel):
     root_cause: str | None = None
     labor_hours: Decimal | None = None
     total_cost: Decimal | None = None
+    checklist: list[dict] | None = None
 
 
 class WorkOrderResponse(BaseModel):
@@ -86,6 +88,8 @@ class WorkOrderResponse(BaseModel):
     scheduled_date: date | None
     started_at: datetime | None
     completed_at: datetime | None
+    checklist: list | None = None
+    pm_schedule_id: UUID | None = None
     created_at: datetime
     updated_at: datetime
 
