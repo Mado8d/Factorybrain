@@ -1,13 +1,19 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { AuthGuard } from '@/components/auth-guard';
 import { useAuth } from '@/store/auth';
-import { Factory, Cog, Cpu, Wrench, Calendar, Zap, BarChart3, Settings, LogOut } from 'lucide-react';
+import { AssetTree } from '@/components/dashboard/asset-tree';
+import {
+  Factory, Cog, Cpu, Wrench, Calendar, Zap, BarChart3, Settings, LogOut,
+  Map, ChevronDown, ChevronRight,
+} from 'lucide-react';
 
 const navigation = [
   { name: 'Overview', href: '/dashboard', icon: Factory },
+  { name: 'Floor Plan', href: '/dashboard/floor-plan', icon: Map },
   { name: 'Machines', href: '/dashboard/machines', icon: Cog },
   { name: 'Sensors', href: '/dashboard/sensors', icon: Cpu },
   { name: 'Maintenance', href: '/dashboard/maintenance', icon: Wrench },
@@ -32,6 +38,7 @@ export default function DashboardLayout({
 function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const [treeOpen, setTreeOpen] = useState(true);
 
   return (
     <div className="flex h-screen bg-background">
@@ -42,15 +49,16 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
           <p className="text-xs text-muted-foreground mt-1">v0.1.0</p>
         </div>
 
-        <nav className="flex-1 px-3 py-4 space-y-1">
+        {/* Navigation */}
+        <nav className="px-3 py-3 space-y-0.5 border-b border-border">
           {navigation.map((item) => {
-            const isActive = pathname === item.href;
+            const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
             const Icon = item.icon;
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                className={`flex items-center gap-3 px-3 py-1.5 rounded-lg text-sm transition-colors ${
                   isActive
                     ? 'bg-brand-600/20 text-brand-400 font-medium'
                     : 'text-muted-foreground hover:bg-accent hover:text-foreground'
@@ -63,6 +71,23 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
+        {/* Asset Tree */}
+        <div className="flex-1 flex flex-col min-h-0">
+          <button
+            onClick={() => setTreeOpen(!treeOpen)}
+            className="flex items-center gap-2 px-4 py-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {treeOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+            Asset Navigator
+          </button>
+          {treeOpen && (
+            <div className="flex-1 overflow-hidden">
+              <AssetTree />
+            </div>
+          )}
+        </div>
+
+        {/* User */}
         <div className="p-4 border-t border-border">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-brand-600/20 flex items-center justify-center text-brand-400 text-sm font-medium">
