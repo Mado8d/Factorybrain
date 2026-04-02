@@ -190,6 +190,10 @@ class ApiClient {
     return this.request(`/api/machines/${id}`, { method: 'DELETE' });
   }
 
+  async getMachineDiagnostics(id: string) {
+    return this.request(`/api/machines/${id}/diagnostics`);
+  }
+
   async getMachineThresholds(id: string) {
     return this.request(`/api/machines/${id}/thresholds`);
   }
@@ -199,6 +203,36 @@ class ApiClient {
       method: 'PUT',
       body: JSON.stringify(overrides),
     });
+  }
+
+  // --- Documents ---
+  async getDocuments(machineId: string) {
+    return this.request(`/api/machines/${machineId}/documents`);
+  }
+
+  async uploadDocument(machineId: string, file: File) {
+    const token = this.getToken();
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch(`${API_BASE}/api/machines/${machineId}/documents`, {
+      method: 'POST',
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+      body: formData,
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.detail || `Upload failed: ${response.status}`);
+    }
+    return response.json();
+  }
+
+  async deleteDocument(machineId: string, filename: string) {
+    return this.request(`/api/machines/${machineId}/documents/${encodeURIComponent(filename)}`, { method: 'DELETE' });
+  }
+
+  getDocumentUrl(machineId: string, filename: string) {
+    return `${API_BASE}/api/uploads/${machineId}/${encodeURIComponent(filename)}`;
   }
 
   // --- Plants ---

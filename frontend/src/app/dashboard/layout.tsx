@@ -4,11 +4,12 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { AuthGuard } from '@/components/auth-guard';
 import { useAuth } from '@/store/auth';
-import { Factory, Cog, Wrench, Calendar, Zap, BarChart3, Settings, LogOut } from 'lucide-react';
+import { Factory, Cog, Cpu, Wrench, Calendar, Zap, BarChart3, Settings, LogOut } from 'lucide-react';
 
 const navigation = [
   { name: 'Overview', href: '/dashboard', icon: Factory },
   { name: 'Machines', href: '/dashboard/machines', icon: Cog },
+  { name: 'Sensors', href: '/dashboard/sensors', icon: Cpu },
   { name: 'Maintenance', href: '/dashboard/maintenance', icon: Wrench },
   { name: 'Scheduling', href: '/dashboard/scheduling', icon: Calendar },
   { name: 'Energy', href: '/dashboard/energy', icon: Zap },

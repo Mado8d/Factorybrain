@@ -6,7 +6,7 @@ import { api } from '@/lib/api';
 import { useAuth } from '@/store/auth';
 import { FlexibleChart } from '@/components/dashboard/flexible-chart';
 import { DateRangePicker, ComparisonRange } from '@/components/dashboard/date-range-picker';
-import { Pencil, Plus, Unplug, Power, PowerOff, ArrowLeft, QrCode, Download } from 'lucide-react';
+import { Pencil, Plus, Unplug, Power, PowerOff, ArrowLeft, QrCode, Download, Upload, FileText, Trash2, X } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -69,6 +69,9 @@ export default function MachineDetailPage() {
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [thresholds, setThresholds] = useState<Record<string, { value: number; is_custom: boolean; default: number }> | null>(null);
+  const [documents, setDocuments] = useState<{ filename: string; size: number; uploaded_at: string }[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [diagnostics, setDiagnostics] = useState<{ type: string; severity: string; message: string; metric: string | null; current_value?: number; predicted_days_to_critical?: number; trend?: string }[]>([]);
   const [editingThresholds, setEditingThresholds] = useState<Record<string, string>>({});
 
   // Add sensor form state
@@ -98,11 +101,19 @@ export default function MachineDetailPage() {
       setMachine(machineData);
       setAllNodes(nodesData);
       setNodes(nodesData.filter((n: any) => n.machine_id === machineId));
-      // Load thresholds
+      // Load thresholds + documents
       try {
         const t = await api.getMachineThresholds(machineId) as Record<string, { value: number; is_custom: boolean; default: number }>;
         setThresholds(t);
       } catch { /* ignore if endpoint not available yet */ }
+      try {
+        const docs = await api.getDocuments(machineId) as any[];
+        setDocuments(docs);
+      } catch { /* ignore */ }
+      try {
+        const diag = await api.getMachineDiagnostics(machineId) as any[];
+        setDiagnostics(diag);
+      } catch { /* ignore */ }
     } catch {
       router.push('/dashboard/machines');
     } finally {
@@ -306,6 +317,77 @@ export default function MachineDetailPage() {
         </div>
       )}
 
+      {/* Documents */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold text-foreground">Documents</h2>
+          {isAdmin && (
+            <label className="cursor-pointer">
+              <input type="file" className="hidden" accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.xls,.xlsx,.csv,.txt"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  setUploading(true);
+                  try {
+                    await api.uploadDocument(machineId, file);
+                    const docs = await api.getDocuments(machineId) as any[];
+                    setDocuments(docs);
+                    showFeedback('File uploaded');
+                  } catch (err: any) {
+                    showFeedback(err.message || 'Upload failed');
+                  } finally {
+                    setUploading(false);
+                    e.target.value = '';
+                  }
+                }}
+              />
+              <span className="inline-flex items-center gap-1 px-3 h-8 text-xs rounded-lg border border-border bg-transparent hover:bg-accent text-foreground cursor-pointer transition-colors">
+                <Upload className="h-3.5 w-3.5" />{uploading ? 'Uploading...' : 'Upload File'}
+              </span>
+            </label>
+          )}
+        </div>
+        {documents.length === 0 ? (
+          <div className="text-center py-6 bg-card rounded-xl border border-border">
+            <FileText className="h-6 w-6 text-muted-foreground mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">No documents attached.</p>
+          </div>
+        ) : (
+          <div className="bg-card rounded-xl border border-border divide-y divide-border">
+            {documents.map((doc) => (
+              <div key={doc.filename} className="flex items-center justify-between px-4 py-3 group">
+                <div className="flex items-center gap-3">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{doc.filename}</p>
+                    <p className="text-xs text-muted-foreground">{(doc.size / 1024).toFixed(0)} KB · {new Date(doc.uploaded_at).toLocaleString('en-GB')}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <a href={api.getDocumentUrl(machineId, doc.filename)} target="_blank" rel="noopener noreferrer">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" title="Download">
+                      <Download className="h-3.5 w-3.5" />
+                    </Button>
+                  </a>
+                  {isAdmin && (
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-300" title="Delete"
+                      onClick={async () => {
+                        try {
+                          await api.deleteDocument(machineId, doc.filename);
+                          setDocuments(documents.filter((d) => d.filename !== doc.filename));
+                          showFeedback('File deleted');
+                        } catch { showFeedback('Delete failed'); }
+                      }}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Thresholds */}
       {thresholds && (
         <div className="mb-6">
@@ -443,6 +525,38 @@ export default function MachineDetailPage() {
           </div>
         )}
       </div>
+
+      {/* AI Insights */}
+      {diagnostics.length > 0 && (
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="h-5 w-5 rounded bg-brand-600/20 flex items-center justify-center">
+              <span className="text-brand-400 text-xs font-bold">AI</span>
+            </div>
+            <h2 className="text-lg font-semibold text-foreground">Diagnostics</h2>
+          </div>
+          <div className="space-y-2">
+            {diagnostics.map((d, i) => {
+              const borderColor = d.severity === 'critical' ? 'border-l-red-500' : d.severity === 'warning' ? 'border-l-amber-500' : d.severity === 'success' ? 'border-l-green-500' : 'border-l-blue-500';
+              const icon = d.severity === 'critical' ? '!!' : d.severity === 'warning' ? '!' : d.severity === 'success' ? '\u2713' : 'i';
+              const iconBg = d.severity === 'critical' ? 'bg-red-500/20 text-red-400' : d.severity === 'warning' ? 'bg-amber-500/20 text-amber-400' : d.severity === 'success' ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400';
+              return (
+                <div key={i} className={`bg-card rounded-lg border border-border border-l-4 ${borderColor} p-4`}>
+                  <div className="flex items-start gap-3">
+                    <div className={`w-6 h-6 rounded-full ${iconBg} flex items-center justify-center text-xs font-bold shrink-0 mt-0.5`}>{icon}</div>
+                    <div>
+                      <p className="text-sm text-foreground">{d.message}</p>
+                      {d.predicted_days_to_critical != null && (
+                        <p className="text-xs text-muted-foreground mt-1">Estimated time to critical: <strong className={d.predicted_days_to_critical < 7 ? 'text-red-400' : 'text-amber-400'}>{d.predicted_days_to_critical} days</strong></p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Telemetry Charts */}
       {telemetryHistory.length > 0 && (

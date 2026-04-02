@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FactoryBrain — Offline</title>
+  <style>
+    body { background: #0a0a0a; color: #e4e4e7; font-family: Inter, system-ui, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+    .container { text-align: center; padding: 2rem; }
+    h1 { color: #7c3aed; font-size: 1.5rem; }
+    p { color: #a1a1aa; margin-top: 0.5rem; }
+    .retry { margin-top: 1.5rem; padding: 0.5rem 1.5rem; background: #7c3aed; color: white; border: none; border-radius: 0.5rem; cursor: pointer; font-size: 0.875rem; }
+    .retry:hover { background: #6d28d9; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>FactoryBrain</h1>
+    <p>You are offline. Check your internet connection and try again.</p>
+    <button class="retry" onclick="window.location.reload()">Retry</button>
+  </div>
+</body>
+</html>
