@@ -7,6 +7,7 @@ from core.devices.routes import router as devices_router
 from core.machines.routes import router as machines_router
 from core.plants.routes import router as plants_router
 from core.maintenance.routes import router as maintenance_router
+from core.maintenance.pm_routes import router as pm_router
 from core.tenants.routes import router as tenants_router
 from core.api.dashboard import router as dashboard_router
 from core.api.uploads import router as uploads_router
@@ -23,4 +24,5 @@ api_router.include_router(devices_router, prefix="/nodes", tags=["devices"])
 api_router.include_router(machines_router, prefix="/machines", tags=["machines"])
 api_router.include_router(plants_router, prefix="/plants", tags=["plants"])
 api_router.include_router(maintenance_router, prefix="/maintenance", tags=["maintenance"])
+api_router.include_router(pm_router, prefix="/maintenance/pm-schedules", tags=["preventive-maintenance"])
 api_router.include_router(tenants_router, prefix="/tenants", tags=["tenants"])

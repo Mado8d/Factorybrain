@@ -130,6 +130,14 @@ async def update_work_order(
     wo.updated_at = now
     await db.flush()
     await db.refresh(wo)
+
+    # If this WO was generated from a PM schedule, complete the occurrence
+    if wo.pm_occurrence_id and wo.status == "completed" and wo.completed_at:
+        from core.services.pm_schedule_service import complete_occurrence, get_occurrence
+        occurrence = await get_occurrence(db, wo.pm_occurrence_id)
+        if occurrence:
+            await complete_occurrence(db, occurrence, wo.completed_at)
+
     return wo
 
 

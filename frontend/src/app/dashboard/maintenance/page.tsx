@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/store/auth';
-import { Plus, ArrowRight, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Plus, ArrowRight, CheckCircle, AlertTriangle, CalendarCheck, Clock, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -69,9 +69,17 @@ export default function MaintenancePage() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
   const [machines, setMachines] = useState<Machine[]>([]);
-  const [activeTab, setActiveTab] = useState<'alerts' | 'work-orders'>('alerts');
+  const [activeTab, setActiveTab] = useState<'alerts' | 'work-orders' | 'pm-schedules'>('alerts');
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState('');
+
+  // PM state
+  const [pmSchedules, setPmSchedules] = useState<any[]>([]);
+  const [pmTemplates, setPmTemplates] = useState<any[]>([]);
+  const [pmCompliance, setPmCompliance] = useState<any>(null);
+  const [createPmOpen, setCreatePmOpen] = useState(false);
+  const [pmTemplateId, setPmTemplateId] = useState('');
+  const [pmMachineId, setPmMachineId] = useState('');
 
   // Create WO state
   const [createWoOpen, setCreateWoOpen] = useState(false);
@@ -103,6 +111,17 @@ export default function MaintenancePage() {
       setAlerts(a);
       setWorkOrders(w);
       setMachines(m);
+      // Load PM data (don't fail if endpoints not yet available)
+      try {
+        const [pm, tpl, comp] = await Promise.all([
+          api.getPMSchedules({ is_active: true }) as Promise<any[]>,
+          api.getPMTemplates() as Promise<any[]>,
+          api.getPMCompliance(),
+        ]);
+        setPmSchedules(pm);
+        setPmTemplates(tpl);
+        setPmCompliance(comp);
+      } catch { /* PM endpoints may not exist yet */ }
     } catch (err) {
       console.error(err);
     } finally {
@@ -232,6 +251,9 @@ export default function MaintenancePage() {
         <button onClick={() => setActiveTab('work-orders')} className={`px-4 py-2 text-sm rounded-md transition-colors ${activeTab === 'work-orders' ? 'bg-card text-foreground shadow-sm font-medium' : 'text-muted-foreground hover:text-foreground'}`}>
           Work Orders ({workOrders.length})
         </button>
+        <button onClick={() => setActiveTab('pm-schedules')} className={`px-4 py-2 text-sm rounded-md transition-colors ${activeTab === 'pm-schedules' ? 'bg-card text-foreground shadow-sm font-medium' : 'text-muted-foreground hover:text-foreground'}`}>
+          <CalendarCheck className="h-3.5 w-3.5 inline mr-1" />PM Schedules ({pmSchedules.length})
+        </button>
       </div>
 
       {/* Alerts Tab */}
@@ -309,6 +331,171 @@ export default function MaintenancePage() {
           ))}
         </div>
       )}
+
+      {/* PM Schedules Tab */}
+      {activeTab === 'pm-schedules' && (
+        <div>
+          {/* PM Stats */}
+          {pmCompliance && (
+            <div className="grid grid-cols-3 gap-4 mb-4">
+              <div className="bg-card rounded-xl border border-border p-4">
+                <p className="text-xs text-muted-foreground">Due / Overdue</p>
+                <p className="text-2xl font-bold text-amber-400 mt-1">{pmSchedules.filter(s => s.next_due_date && new Date(s.next_due_date) <= new Date()).length}</p>
+              </div>
+              <div className="bg-card rounded-xl border border-border p-4">
+                <p className="text-xs text-muted-foreground">Active Schedules</p>
+                <p className="text-2xl font-bold text-foreground mt-1">{pmSchedules.length}</p>
+              </div>
+              <div className="bg-card rounded-xl border border-border p-4">
+                <p className="text-xs text-muted-foreground">Compliance (30d)</p>
+                <p className={`text-2xl font-bold mt-1 ${pmCompliance.compliance_rate >= 85 ? 'text-green-400' : pmCompliance.compliance_rate >= 60 ? 'text-amber-400' : 'text-red-400'}`}>{pmCompliance.compliance_rate}%</p>
+              </div>
+            </div>
+          )}
+
+          {/* PM Schedule List */}
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-muted-foreground">Active PM Plans</h2>
+            {isAdmin && (
+              <Button size="sm" onClick={() => { setPmMachineId(machines[0]?.id || ''); setCreatePmOpen(true); }}>
+                <Plus className="h-4 w-4 mr-1" /> Add PM Schedule
+              </Button>
+            )}
+          </div>
+
+          {pmSchedules.length === 0 ? (
+            <div className="text-center py-12 bg-card rounded-xl border border-border">
+              <CalendarCheck className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+              <p className="text-muted-foreground">No preventive maintenance schedules yet</p>
+              <p className="text-sm text-muted-foreground mt-1">Create from templates or build custom schedules.</p>
+              {isAdmin && (
+                <Button size="sm" className="mt-3" onClick={() => setCreatePmOpen(true)}>
+                  <Plus className="h-4 w-4 mr-1" /> Add PM Schedule
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {pmSchedules.map((pm: any) => {
+                const isOverdue = pm.next_due_date && new Date(pm.next_due_date) < new Date();
+                const isDueToday = pm.next_due_date && new Date(pm.next_due_date).toDateString() === new Date().toDateString();
+                const borderColor = isOverdue ? 'border-l-red-500' : isDueToday ? 'border-l-amber-500' : 'border-l-green-500';
+                return (
+                  <div key={pm.id} className={`bg-card rounded-xl border border-border border-l-4 ${borderColor} p-5`}>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-foreground">{pm.name}</p>
+                          <Badge variant={pm.trigger_type === 'condition' ? 'warning' : pm.trigger_type === 'hybrid' ? 'info' : 'default'}>
+                            {pm.trigger_type}
+                          </Badge>
+                          {pm.category && <Badge variant="muted">{pm.category}</Badge>}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {getMachineName(pm.machine_id)}
+                          {pm.calendar_unit_value && pm.calendar_unit && ` · Every ${pm.calendar_unit_value} ${pm.calendar_unit}`}
+                          {pm.estimated_duration_minutes && ` · ~${pm.estimated_duration_minutes} min`}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        {pm.next_due_date && (
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span className={`text-sm font-medium ${isOverdue ? 'text-red-400' : isDueToday ? 'text-amber-400' : 'text-foreground'}`}>
+                              {isOverdue ? 'Overdue' : isDueToday ? 'Due today' : new Date(pm.next_due_date).toLocaleDateString('en-GB')}
+                            </span>
+                          </div>
+                        )}
+                        {isAdmin && (
+                          <Button size="sm" variant="ghost" className="h-7 text-xs mt-1" onClick={async () => {
+                            try {
+                              await api.deletePMSchedule(pm.id);
+                              await loadData();
+                              showFeedback('Schedule deactivated');
+                            } catch { showFeedback('Failed'); }
+                          }}>Deactivate</Button>
+                        )}
+                      </div>
+                    </div>
+                    {pm.checklist && pm.checklist.length > 0 && (
+                      <div className="mt-3 pt-3 border-t border-border">
+                        <p className="text-xs text-muted-foreground mb-1">Checklist ({pm.checklist.length} steps)</p>
+                        <div className="text-xs text-muted-foreground space-y-0.5">
+                          {pm.checklist.slice(0, 3).map((item: any, i: number) => (
+                            <p key={i}>• {item.step}</p>
+                          ))}
+                          {pm.checklist.length > 3 && <p className="text-muted-foreground/50">+{pm.checklist.length - 3} more...</p>}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Create PM Schedule Dialog (from template) */}
+      <Dialog open={createPmOpen} onOpenChange={setCreatePmOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Create PM Schedule</DialogTitle>
+            <DialogDescription>Choose a maintenance template and assign it to a machine.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Machine *</Label>
+              <Select value={pmMachineId} onValueChange={setPmMachineId}>
+                <SelectTrigger className="mt-1"><SelectValue placeholder="Select machine..." /></SelectTrigger>
+                <SelectContent>
+                  {machines.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>{m.asset_tag || m.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>PM Template *</Label>
+              <div className="grid grid-cols-2 gap-2 mt-2 max-h-64 overflow-y-auto">
+                {pmTemplates.map((tpl: any) => (
+                  <button
+                    key={tpl.id}
+                    onClick={() => setPmTemplateId(tpl.id)}
+                    className={`text-left p-3 rounded-lg border transition-colors ${pmTemplateId === tpl.id ? 'border-brand-500 bg-brand-600/10' : 'border-border hover:border-border/80'}`}
+                  >
+                    <p className="text-sm font-medium text-foreground">{tpl.name}</p>
+                    <div className="flex items-center gap-1 mt-1">
+                      <Badge variant="muted" className="text-[10px]">{tpl.category}</Badge>
+                      <Badge variant="default" className="text-[10px]">{tpl.trigger_type}</Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {tpl.calendar_interval_days && `Every ${tpl.calendar_interval_days}d`}
+                      {tpl.estimated_duration_minutes && ` · ~${tpl.estimated_duration_minutes}min`}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button disabled={submitting || !pmMachineId || !pmTemplateId} onClick={async () => {
+              setSubmitting(true);
+              try {
+                await api.createPMFromTemplate(pmTemplateId, pmMachineId);
+                setCreatePmOpen(false);
+                setPmTemplateId('');
+                await loadData();
+                showFeedback('PM schedule created');
+              } catch (err: any) {
+                showFeedback(err.message || 'Failed');
+              } finally { setSubmitting(false); }
+            }}>
+              {submitting ? 'Creating...' : 'Create PM Schedule'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Create Work Order Dialog */}
       <Dialog open={createWoOpen} onOpenChange={setCreateWoOpen}>

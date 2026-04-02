@@ -334,6 +334,68 @@ class ApiClient {
     });
   }
 
+  // --- PM Schedules ---
+  async getPMSchedules(params?: { machine_id?: string; is_active?: boolean; trigger_type?: string }) {
+    const sp = new URLSearchParams();
+    if (params?.machine_id) sp.set('machine_id', params.machine_id);
+    if (params?.is_active !== undefined) sp.set('is_active', String(params.is_active));
+    if (params?.trigger_type) sp.set('trigger_type', params.trigger_type);
+    const qs = sp.toString();
+    return this.request(`/api/maintenance/pm-schedules${qs ? `?${qs}` : ''}`);
+  }
+
+  async getPMSchedulesDueToday() {
+    return this.request('/api/maintenance/pm-schedules/due-today');
+  }
+
+  async getPMTemplates() {
+    return this.request('/api/maintenance/pm-schedules/templates');
+  }
+
+  async getPMCompliance(periodStart?: string, periodEnd?: string) {
+    const sp = new URLSearchParams();
+    if (periodStart) sp.set('period_start', periodStart);
+    if (periodEnd) sp.set('period_end', periodEnd);
+    const qs = sp.toString();
+    return this.request(`/api/maintenance/pm-schedules/compliance${qs ? `?${qs}` : ''}`);
+  }
+
+  async createPMSchedule(data: any) {
+    return this.request('/api/maintenance/pm-schedules', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async createPMFromTemplate(templateId: string, machineId: string) {
+    return this.request('/api/maintenance/pm-schedules/from-template', {
+      method: 'POST',
+      body: JSON.stringify({ template_id: templateId, machine_id: machineId }),
+    });
+  }
+
+  async updatePMSchedule(id: string, data: any) {
+    return this.request(`/api/maintenance/pm-schedules/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deletePMSchedule(id: string) {
+    return this.request(`/api/maintenance/pm-schedules/${id}`, { method: 'DELETE' });
+  }
+
+  async getPMOccurrences(scheduleId: string) {
+    return this.request(`/api/maintenance/pm-schedules/${scheduleId}/occurrences`);
+  }
+
+  async skipPMOccurrence(scheduleId: string, occurrenceId: string, reason: string) {
+    return this.request(`/api/maintenance/pm-schedules/${scheduleId}/occurrences/${occurrenceId}/skip`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    });
+  }
+
   // --- Tenant Settings ---
   async getTenantSettings() {
     return this.request('/api/tenants/settings');

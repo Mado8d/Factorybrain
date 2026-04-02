@@ -11,6 +11,8 @@ from core.models.machine_event import MachineEvent
 from core.models.maintenance import (
     MaintenanceAlert,
     MaintenanceWorkOrder,
+    PreventiveMaintenanceSchedule,
+    PMOccurrence,
     ServiceProvider,
     ServiceProviderUser,
 )
@@ -29,6 +31,8 @@ __all__ = [
     "MaintenanceAlert",
     "MaintenanceWorkOrder",
     "ServiceProvider",
+    "PreventiveMaintenanceSchedule",
+    "PMOccurrence",
     "ServiceProviderUser",
     "AISuggestion",
 ]
