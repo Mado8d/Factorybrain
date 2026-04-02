@@ -251,9 +251,49 @@ class ApiClient {
     return this.request(`/api/maintenance/alerts${params}`);
   }
 
+  async updateAlert(id: string, data: { status?: string; acknowledged_by?: string }) {
+    return this.request(`/api/maintenance/alerts/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
   async getWorkOrders(status?: string) {
     const params = status ? `?status=${status}` : '';
     return this.request(`/api/maintenance/work-orders${params}`);
+  }
+
+  async createWorkOrder(data: {
+    machine_id: string;
+    title: string;
+    trigger_type?: string;
+    trigger_alert_id?: string;
+    description?: string;
+    priority?: string;
+    category?: string;
+    requested_date?: string;
+  }) {
+    return this.request('/api/maintenance/work-orders', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateWorkOrder(id: string, data: {
+    title?: string;
+    description?: string;
+    priority?: string;
+    status?: string;
+    scheduled_date?: string;
+    work_performed?: string;
+    root_cause?: string;
+    labor_hours?: number;
+    total_cost?: number;
+  }) {
+    return this.request(`/api/maintenance/work-orders/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
   }
 
   // --- Tenant Settings ---
