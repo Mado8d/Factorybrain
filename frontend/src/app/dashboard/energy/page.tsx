@@ -4,10 +4,49 @@ import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { FlexibleChart } from '@/components/dashboard/flexible-chart';
 import { DateRangePicker, ComparisonRange } from '@/components/dashboard/date-range-picker';
+import { Activity } from 'lucide-react';
+
+interface OEEData {
+  machine_id: string;
+  machine_name: string;
+  asset_tag: string | null;
+  node_id: string;
+  availability: number;
+  total_buckets: number;
+  active_buckets: number;
+  hours: number;
+}
+
+function AvailabilityGauge({ value, label }: { value: number; label: string }) {
+  const color = value >= 85 ? 'text-green-400' : value >= 60 ? 'text-amber-400' : 'text-red-400';
+  const bgColor = value >= 85 ? 'bg-green-500/20' : value >= 60 ? 'bg-amber-500/20' : 'bg-red-500/20';
+  const strokeColor = value >= 85 ? '#22c55e' : value >= 60 ? '#f59e0b' : '#ef4444';
+  const circumference = 2 * Math.PI * 40;
+  const offset = circumference - (value / 100) * circumference;
+
+  return (
+    <div className="bg-card rounded-xl border border-border p-5 flex flex-col items-center">
+      <div className="relative w-24 h-24">
+        <svg className="w-24 h-24 -rotate-90" viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="40" fill="none" stroke="#2a2a3e" strokeWidth="8" />
+          <circle cx="50" cy="50" r="40" fill="none" stroke={strokeColor} strokeWidth="8"
+            strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round"
+            className="transition-all duration-700" />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className={`text-lg font-bold ${color}`}>{value}%</span>
+        </div>
+      </div>
+      <p className="text-sm font-medium text-foreground mt-2">{label}</p>
+      <p className="text-xs text-muted-foreground">Availability</p>
+    </div>
+  );
+}
 
 export default function EnergyPage() {
   const [history, setHistory] = useState<any[]>([]);
   const [latestTelemetry, setLatestTelemetry] = useState<Record<string, any>>({});
+  const [oeeData, setOeeData] = useState<OEEData[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState<ComparisonRange>({
     primary: {
@@ -19,12 +58,15 @@ export default function EnergyPage() {
   useEffect(() => {
     const load = async () => {
       try {
-        const [historyData, latestData] = await Promise.all([
+        const spanHours = Math.round((new Date(dateRange.primary.end).getTime() - new Date(dateRange.primary.start).getTime()) / 3600000);
+        const [historyData, latestData, oee] = await Promise.all([
           api.getTelemetryHistory({ node_type: 'energysense', start: dateRange.primary.start, end: dateRange.primary.end }),
           api.getLatestTelemetry(),
+          api.getOEE(Math.min(168, Math.max(1, spanHours))),
         ]);
         setHistory(historyData as any[]);
         setLatestTelemetry(latestData as Record<string, any>);
+        setOeeData(oee as OEEData[]);
       } catch (err) {
         console.error('Failed to load energy data:', err);
       } finally {
@@ -44,7 +86,7 @@ export default function EnergyPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-foreground">Energy</h1>
+        <h1 className="text-2xl font-bold text-foreground">Energy & OEE</h1>
       </div>
 
       <div className="mb-6">
@@ -69,6 +111,22 @@ export default function EnergyPage() {
           <p className="text-3xl font-bold text-foreground mt-1">{energyNodes.length}</p>
         </div>
       </div>
+
+      {/* OEE / Availability Gauges */}
+      {oeeData.length > 0 && (
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <Activity className="h-5 w-5 text-brand-400" />
+            <h2 className="text-lg font-semibold text-foreground">Machine Availability (OEE)</h2>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {oeeData.map((d) => (
+              <AvailabilityGauge key={d.machine_id} value={d.availability} label={d.asset_tag || d.machine_name} />
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">Based on energy consumption over the selected period. Machine is &quot;active&quot; when grid power &gt; 500W.</p>
+        </div>
+      )}
 
       {history.length > 0 ? (
         <div className="grid grid-cols-2 gap-4">

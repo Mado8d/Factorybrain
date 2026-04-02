@@ -55,6 +55,78 @@ async def get_kpis(user: CurrentUser, db: AsyncSession = Depends(get_db)):
     return await dashboard_service.get_dashboard_kpis(db)
 
 
+@router.get("/oee")
+async def get_oee(
+    user: CurrentUser,
+    db: AsyncSession = Depends(get_db),
+    hours: int = Query(24, ge=1, le=168),
+):
+    """Calculate OEE (availability) per machine from energy data.
+
+    Availability = time with power > threshold / total planned time.
+    Uses EnergySense grid_power_w to detect machine on/off state.
+    """
+    await set_tenant_context(db, str(user.tenant_id))
+
+    from sqlalchemy import text as sa_text
+
+    # Get machine-to-node mapping
+    from core.models.sensor_node import SensorNode
+    from core.models.machine import Machine
+
+    nodes_result = await db.execute(
+        select(SensorNode.id, SensorNode.machine_id, SensorNode.node_type)
+        .where(SensorNode.node_type == "energysense")
+        .where(SensorNode.machine_id.isnot(None))
+    )
+    energy_nodes = nodes_result.all()
+
+    machines_result = await db.execute(select(Machine))
+    machines_map = {m.id: m for m in machines_result.scalars().all()}
+
+    oee_data = []
+    power_threshold = 500  # watts — below this = machine idle/off
+
+    for node_id, machine_id, node_type in energy_nodes:
+        machine = machines_map.get(machine_id)
+        if not machine:
+            continue
+
+        # Count buckets where power > threshold vs total buckets
+        result = await db.execute(sa_text("""
+            SELECT
+                COUNT(*) AS total_buckets,
+                COUNT(*) FILTER (WHERE avg_power > :threshold) AS active_buckets
+            FROM (
+                SELECT time_bucket(INTERVAL '5 minutes', time) AS bucket,
+                       AVG(grid_power_w) AS avg_power
+                FROM sensor_readings
+                WHERE node_id = :node_id
+                  AND time >= NOW() - INTERVAL ':hours hours'
+                GROUP BY bucket
+            ) sub
+        """).bindparams(node_id=node_id, threshold=power_threshold, hours=hours))
+
+        row = result.first()
+        if not row or row.total_buckets == 0:
+            continue
+
+        availability = round(row.active_buckets / row.total_buckets * 100, 1)
+
+        oee_data.append({
+            "machine_id": str(machine_id),
+            "machine_name": machine.name,
+            "asset_tag": machine.asset_tag,
+            "node_id": node_id,
+            "availability": availability,
+            "total_buckets": row.total_buckets,
+            "active_buckets": row.active_buckets,
+            "hours": hours,
+        })
+
+    return oee_data
+
+
 @router.get("/latest-telemetry")
 async def get_latest_telemetry(user: CurrentUser, db: AsyncSession = Depends(get_db)):
     """Get the most recent telemetry reading per sensor node."""

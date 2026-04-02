@@ -115,6 +115,10 @@ class ApiClient {
     return this.request('/api/dashboard/kpis');
   }
 
+  async getOEE(hours: number = 24) {
+    return this.request(`/api/dashboard/oee?hours=${hours}`);
+  }
+
   async getLatestTelemetry() {
     return this.request('/api/dashboard/latest-telemetry');
   }
