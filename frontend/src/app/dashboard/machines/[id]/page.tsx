@@ -16,6 +16,7 @@ import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, A
 import { MachineForm, MachineFormData } from '@/components/dashboard/machine-form';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { getSensorTypeConfig } from '@/lib/sensor-types';
 
 interface Machine {
   id: string;
@@ -558,7 +559,7 @@ export default function MachineDetailPage() {
         </div>
       )}
 
-      {/* Telemetry Charts */}
+      {/* Telemetry Charts — dynamic per sensor type */}
       {telemetryHistory.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-3">
@@ -568,23 +569,20 @@ export default function MachineDetailPage() {
             <DateRangePicker value={dateRange} onChange={setDateRange} />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <FlexibleChart
-              data={telemetryHistory}
-              chartType="line"
-              dataKeys={[
-                { key: 'vib_rms_x', name: 'RMS X', color: '#3b82f6' },
-                { key: 'vib_rms_y', name: 'RMS Y', color: '#10b981' },
-                { key: 'vib_rms_z', name: 'RMS Z', color: '#f59e0b' },
-              ]}
-              title="Vibration Trend"
-            />
-            <FlexibleChart
-              data={telemetryHistory}
-              chartType="area"
-              dataKeys={[{ key: 'anomaly_score', name: 'Anomaly', color: '#8b5cf6' }]}
-              title="Anomaly Score"
-              thresholds={[{ value: 0.5, color: '#ef4444', label: 'Threshold' }]}
-            />
+            {nodes.map((node) => {
+              const typeConfig = getSensorTypeConfig(node.node_type);
+              if (!typeConfig) return null;
+              return typeConfig.chartConfigs.map((chart, ci) => (
+                <FlexibleChart
+                  key={`${node.id}-${ci}`}
+                  data={telemetryHistory}
+                  chartType={chart.chartType}
+                  dataKeys={chart.dataKeys}
+                  title={`${chart.title} (${node.id})`}
+                  thresholds={chart.thresholds}
+                />
+              ));
+            })}
           </div>
         </div>
       )}
