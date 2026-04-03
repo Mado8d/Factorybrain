@@ -1,19 +1,18 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { AuthGuard } from '@/components/auth-guard';
 import { useAuth } from '@/store/auth';
-import { AssetTree } from '@/components/dashboard/asset-tree';
 import {
   Factory, Cog, Cpu, Wrench, Calendar, Zap, BarChart3, Settings, LogOut,
-  Map, ChevronDown, ChevronRight,
+  Map, FolderTree,
 } from 'lucide-react';
 
 const navigation = [
   { name: 'Overview', href: '/dashboard', icon: Factory },
   { name: 'Floor Plan', href: '/dashboard/floor-plan', icon: Map },
+  { name: 'Assets', href: '/dashboard/assets', icon: FolderTree },
   { name: 'Machines', href: '/dashboard/machines', icon: Cog },
   { name: 'Sensors', href: '/dashboard/sensors', icon: Cpu },
   { name: 'Maintenance', href: '/dashboard/maintenance', icon: Wrench },
@@ -38,7 +37,6 @@ export default function DashboardLayout({
 function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
-  const [treeOpen, setTreeOpen] = useState(true);
 
   return (
     <div className="flex h-screen bg-background">
@@ -50,7 +48,7 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Navigation */}
-        <nav className="px-3 py-3 space-y-0.5 border-b border-border">
+        <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
           {navigation.map((item) => {
             const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
             const Icon = item.icon;
@@ -70,22 +68,6 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
-
-        {/* Asset Tree */}
-        <div className="flex-1 flex flex-col min-h-0">
-          <button
-            onClick={() => setTreeOpen(!treeOpen)}
-            className="flex items-center gap-2 px-4 py-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
-          >
-            {treeOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-            Asset Navigator
-          </button>
-          {treeOpen && (
-            <div className="flex-1 overflow-hidden">
-              <AssetTree />
-            </div>
-          )}
-        </div>
 
         {/* User */}
         <div className="p-4 border-t border-border">

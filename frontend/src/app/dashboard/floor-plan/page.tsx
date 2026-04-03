@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useAuth } from '@/store/auth';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
-import { ZoomIn, ZoomOut, Maximize, Cog, Lock, Unlock } from 'lucide-react';
+import { ZoomIn, ZoomOut, Maximize, Cog, Lock, Unlock, ImagePlus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
@@ -60,9 +60,15 @@ export default function FloorPlanPage() {
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [hoveredMachine, setHoveredMachine] = useState<string | null>(null);
   const [feedback, setFeedback] = useState('');
+  const [bgImage, setBgImage] = useState<string | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
 
   const showFeedback = (msg: string) => { setFeedback(msg); setTimeout(() => setFeedback(''), 2000); };
+
+  useEffect(() => {
+    const saved = localStorage.getItem('fb_floorplan_bg');
+    if (saved) setBgImage(saved);
+  }, []);
 
   useEffect(() => {
     const load = async () => {
@@ -174,14 +180,39 @@ export default function FloorPlanPage() {
         <h1 className="text-2xl font-bold text-foreground">Floor Plan</h1>
         <div className="flex items-center gap-2">
           {isAdmin && (
-            <Button
-              size="sm"
-              variant={editMode ? 'default' : 'outline'}
-              onClick={() => setEditMode(!editMode)}
-            >
-              {editMode ? <Unlock className="h-3.5 w-3.5 mr-1" /> : <Lock className="h-3.5 w-3.5 mr-1" />}
-              {editMode ? 'Editing' : 'Edit Layout'}
-            </Button>
+            <>
+              <label className="cursor-pointer">
+                <input type="file" className="hidden" accept="image/*" onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onload = () => {
+                    const data = reader.result as string;
+                    setBgImage(data);
+                    localStorage.setItem('fb_floorplan_bg', data);
+                    showFeedback('Background uploaded');
+                  };
+                  reader.readAsDataURL(file);
+                  e.target.value = '';
+                }} />
+                <span className="inline-flex items-center gap-1 px-3 h-8 text-xs rounded-lg border border-border bg-transparent hover:bg-accent text-foreground cursor-pointer transition-colors">
+                  <ImagePlus className="h-3.5 w-3.5" />Background
+                </span>
+              </label>
+              {bgImage && (
+                <Button size="sm" variant="ghost" onClick={() => { setBgImage(null); localStorage.removeItem('fb_floorplan_bg'); showFeedback('Background removed'); }}>
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              )}
+              <Button
+                size="sm"
+                variant={editMode ? 'default' : 'outline'}
+                onClick={() => setEditMode(!editMode)}
+              >
+                {editMode ? <Unlock className="h-3.5 w-3.5 mr-1" /> : <Lock className="h-3.5 w-3.5 mr-1" />}
+                {editMode ? 'Editing' : 'Edit Layout'}
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -217,8 +248,10 @@ export default function FloorPlanPage() {
                   style={{
                     width: CANVAS_W,
                     height: CANVAS_H,
-                    backgroundImage: 'radial-gradient(circle, #2a2a3e 1px, transparent 1px)',
-                    backgroundSize: '30px 30px',
+                    backgroundImage: bgImage ? `url(${bgImage})` : 'radial-gradient(circle, #2a2a3e 1px, transparent 1px)',
+                    backgroundSize: bgImage ? 'cover' : '30px 30px',
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat',
                   }}
                   onPointerMove={handlePointerMove}
                   onPointerUp={handlePointerUp}
