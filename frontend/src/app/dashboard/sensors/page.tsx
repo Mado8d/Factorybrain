@@ -106,7 +106,7 @@ export default function SensorsPage() {
         id: newId.trim(),
         node_type: newType,
         firmware_ver: newFw || undefined,
-        machine_id: newMachineId || undefined,
+        machine_id: newMachineId && newMachineId !== 'none' ? newMachineId : undefined,
       });
       setCreateOpen(false);
       setNewId(''); setNewFw(''); setNewMachineId('');
@@ -136,7 +136,7 @@ export default function SensorsPage() {
       // Handle machine reassignment
       const currentMachine = editNode.machine_id || '';
       if (editMachineId !== currentMachine) {
-        await api.assignNodeToMachine(editNode.id, editMachineId || null);
+        await api.assignNodeToMachine(editNode.id, editMachineId && editMachineId !== 'none' ? editMachineId : null);
       }
       setEditNode(null);
       await loadData();
@@ -305,7 +305,7 @@ export default function SensorsPage() {
               <Select value={newMachineId} onValueChange={setNewMachineId}>
                 <SelectTrigger className="mt-1"><SelectValue placeholder="None (unassigned)" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None (unassigned)</SelectItem>
+                  <SelectItem value="none">None (unassigned)</SelectItem>
                   {machines.map((m) => (
                     <SelectItem key={m.id} value={m.id}>{m.asset_tag || m.name}</SelectItem>
                   ))}
@@ -342,7 +342,7 @@ export default function SensorsPage() {
                 <Select value={editMachineId} onValueChange={setEditMachineId}>
                   <SelectTrigger className="mt-1"><SelectValue placeholder="None (unassigned)" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None (unassigned)</SelectItem>
+                    <SelectItem value="none">None (unassigned)</SelectItem>
                     {machines.map((m) => (
                       <SelectItem key={m.id} value={m.id}>{m.asset_tag || m.name}</SelectItem>
                     ))}

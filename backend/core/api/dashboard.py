@@ -93,7 +93,7 @@ async def get_oee(
             continue
 
         # Count buckets where power > threshold vs total buckets
-        result = await db.execute(sa_text("""
+        result = await db.execute(sa_text(f"""
             SELECT
                 COUNT(*) AS total_buckets,
                 COUNT(*) FILTER (WHERE avg_power > :threshold) AS active_buckets
@@ -102,10 +102,10 @@ async def get_oee(
                        AVG(grid_power_w) AS avg_power
                 FROM sensor_readings
                 WHERE node_id = :node_id
-                  AND time >= NOW() - INTERVAL ':hours hours'
+                  AND time >= NOW() - INTERVAL '{hours} hours'
                 GROUP BY bucket
             ) sub
-        """).bindparams(node_id=node_id, threshold=power_threshold, hours=hours))
+        """).bindparams(node_id=node_id, threshold=power_threshold))
 
         row = result.first()
         if not row or row.total_buckets == 0:

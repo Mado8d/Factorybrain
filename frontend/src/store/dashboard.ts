@@ -40,6 +40,9 @@ export interface TenantSettings {
     time_range_hours: number;
     chart_type: string;
   };
+  escalation?: {
+    warning_to_critical_minutes: number;
+  };
 }
 
 // --- Defaults (must match backend DEFAULT_TENANT_SETTINGS) ---

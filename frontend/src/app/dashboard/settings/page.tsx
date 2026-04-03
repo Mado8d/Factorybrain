@@ -9,6 +9,7 @@ export default function SettingsPage() {
   const { tenantSettings, loadAll, saveTenantSettings } = useDashboard();
   const [thresholds, setThresholds] = useState<ThresholdSettings>(tenantSettings.thresholds);
   const [refreshInterval, setRefreshInterval] = useState(tenantSettings.refresh_interval_seconds);
+  const [escalationMinutes, setEscalationMinutes] = useState(60);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -18,11 +19,12 @@ export default function SettingsPage() {
   useEffect(() => {
     setThresholds(tenantSettings.thresholds);
     setRefreshInterval(tenantSettings.refresh_interval_seconds);
+    setEscalationMinutes((tenantSettings as any).escalation?.warning_to_critical_minutes ?? 60);
   }, [tenantSettings]);
 
   const handleSave = async () => {
     setSaving(true);
-    await saveTenantSettings({ thresholds, refresh_interval_seconds: refreshInterval });
+    await saveTenantSettings({ thresholds, refresh_interval_seconds: refreshInterval, escalation: { warning_to_critical_minutes: escalationMinutes } });
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
@@ -75,6 +77,22 @@ export default function SettingsPage() {
               </button>
             ))}
           </div>
+        </div>
+      </section>
+
+      <section className="bg-card rounded-xl border border-border p-6 mb-6">
+        <h2 className="text-lg font-semibold text-foreground mb-4">Escalation</h2>
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-2">Auto-escalate warning → critical after</label>
+          <div className="flex gap-2">
+            {[15, 30, 60, 120, 240].map((min) => (
+              <button key={min} onClick={() => isAdmin && setEscalationMinutes(min)} disabled={!isAdmin}
+                className={`px-4 py-2 text-sm rounded-lg transition-colors ${escalationMinutes === min ? 'bg-brand-600 text-white' : 'bg-secondary text-muted-foreground hover:bg-accent disabled:hover:bg-secondary'}`}>
+                {min < 60 ? `${min}min` : `${min / 60}h`}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">Warning alerts not acknowledged within this time are automatically escalated to critical.</p>
         </div>
       </section>
 

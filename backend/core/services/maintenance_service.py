@@ -54,9 +54,9 @@ async def update_alert(
 ) -> MaintenanceAlert:
     updates = data.model_dump(exclude_unset=True)
     if updates.get("status") == "acknowledged" and alert.status == "open":
-        alert.acknowledged_at = datetime.now(timezone.utc)
+        alert.acknowledged_at = datetime.utcnow()
     if updates.get("status") == "resolved":
-        alert.resolved_at = datetime.now(timezone.utc)
+        alert.resolved_at = datetime.utcnow()
     for field, value in updates.items():
         setattr(alert, field, value)
     await db.flush()
@@ -120,7 +120,7 @@ async def update_work_order(
     db: AsyncSession, wo: MaintenanceWorkOrder, data: WorkOrderUpdate
 ) -> MaintenanceWorkOrder:
     updates = data.model_dump(exclude_unset=True)
-    now = datetime.now(timezone.utc)
+    now = datetime.utcnow()
     if updates.get("status") == "in_progress" and wo.status != "in_progress":
         wo.started_at = now
     if updates.get("status") == "completed" and wo.status != "completed":

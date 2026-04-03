@@ -36,7 +36,7 @@ async def update_machine(
 ) -> Machine:
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(machine, field, value)
-    machine.updated_at = datetime.now(timezone.utc)
+    machine.updated_at = datetime.utcnow()
     await db.flush()
     await db.refresh(machine)
     return machine

@@ -43,6 +43,30 @@ def _check_tenant(session, tenant: Tenant):
     # Set RLS context
     session.execute(text(f"SET LOCAL app.current_tenant = '{tenant.id}'"))
 
+    # Escalation check: open alerts older than escalation_minutes get upgraded
+    escalation_rules = settings.get("escalation", {})
+    warning_escalate_min = escalation_rules.get("warning_to_critical_minutes", 60)
+    auto_create_wo = escalation_rules.get("auto_create_wo_on_critical", False)
+
+    escalation_cutoff = datetime.now(timezone.utc) - timedelta(minutes=warning_escalate_min)
+    stale_alerts = session.execute(
+        select(MaintenanceAlert)
+        .where(MaintenanceAlert.tenant_id == tenant.id)
+        .where(MaintenanceAlert.status == "open")
+        .where(MaintenanceAlert.severity == "warning")
+        .where(MaintenanceAlert.created_at <= escalation_cutoff)
+    ).scalars().all()
+
+    for alert in stale_alerts:
+        alert.severity = "critical"
+        alert.details = {
+            **(alert.details or {}),
+            "escalated_from": "warning",
+            "escalated_at": datetime.now(timezone.utc).isoformat(),
+            "escalation_reason": f"Not acknowledged within {warning_escalate_min} minutes",
+        }
+        logger.info(f"Escalated alert {alert.id} from warning to critical (>{warning_escalate_min}min unacknowledged)")
+
     # Get latest reading per node (within last 2 minutes)
     since = datetime.now(timezone.utc) - timedelta(minutes=2)
     readings = session.execute(
