@@ -13,6 +13,7 @@ from core.models.maintenance import (
     MaintenanceWorkOrder,
     PreventiveMaintenanceSchedule,
     PMOccurrence,
+    SparePart,
     ServiceProvider,
     ServiceProviderUser,
 )

@@ -335,6 +335,23 @@ class ApiClient {
     });
   }
 
+  // --- Spare Parts ---
+  async getSpareParts() {
+    return this.request('/api/maintenance/parts');
+  }
+
+  async createSparePart(data: any) {
+    return this.request('/api/maintenance/parts', { method: 'POST', body: JSON.stringify(data) });
+  }
+
+  async updateSparePart(id: string, data: any) {
+    return this.request(`/api/maintenance/parts/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+  }
+
+  async deleteSparePart(id: string) {
+    return this.request(`/api/maintenance/parts/${id}`, { method: 'DELETE' });
+  }
+
   // --- PM Schedules ---
   async getPMSchedules(params?: { machine_id?: string; is_active?: boolean; trigger_type?: string }) {
     const sp = new URLSearchParams();

@@ -6,7 +6,7 @@ import { AuthGuard } from '@/components/auth-guard';
 import { useAuth } from '@/store/auth';
 import {
   Factory, Cog, Cpu, Wrench, Calendar, Zap, BarChart3, Settings, LogOut,
-  Map, FolderTree,
+  Map, FolderTree, Package,
 } from 'lucide-react';
 
 const navigation = [
@@ -17,6 +17,7 @@ const navigation = [
   { name: 'Sensors', href: '/dashboard/sensors', icon: Cpu },
   { name: 'Maintenance', href: '/dashboard/maintenance', icon: Wrench },
   { name: 'Scheduling', href: '/dashboard/scheduling', icon: Calendar },
+  { name: 'Parts', href: '/dashboard/parts', icon: Package },
   { name: 'Energy', href: '/dashboard/energy', icon: Zap },
   { name: 'Reports', href: '/dashboard/reports', icon: BarChart3 },
   { name: 'Settings', href: '/dashboard/settings', icon: Settings },

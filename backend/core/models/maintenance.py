@@ -21,6 +21,31 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from core.models.base import Base
 
 
+class SparePart(Base):
+    """Spare parts inventory for maintenance."""
+    __tablename__ = "spare_parts"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
+    )
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    part_number: Mapped[str | None] = mapped_column(String, nullable=True)
+    description: Mapped[str | None] = mapped_column(String, nullable=True)
+    category: Mapped[str | None] = mapped_column(String, nullable=True)
+    supplier: Mapped[str | None] = mapped_column(String, nullable=True)
+    unit_cost: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    quantity_in_stock: Mapped[int] = mapped_column(Integer, server_default="0")
+    min_stock_level: Mapped[int] = mapped_column(Integer, server_default="1")
+    location: Mapped[str | None] = mapped_column(String, nullable=True)
+    machine_ids: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, server_default="true")
+    created_at: Mapped[datetime] = mapped_column(server_default=text("NOW()"))
+    updated_at: Mapped[datetime] = mapped_column(server_default=text("NOW()"))
+
+
 class ServiceProvider(Base):
     __tablename__ = "service_providers"
 

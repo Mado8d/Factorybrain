@@ -13,6 +13,9 @@ from core.schemas.maintenance import (
     AlertUpdate,
     ServiceProviderCreate,
     ServiceProviderResponse,
+    SparePartCreate,
+    SparePartResponse,
+    SparePartUpdate,
     WorkOrderCreate,
     WorkOrderResponse,
     WorkOrderUpdate,
@@ -128,3 +131,41 @@ async def create_provider(
 ):
     await set_tenant_context(db, str(user.tenant_id))
     return await maintenance_service.create_service_provider(db, user.tenant_id, data)
+
+
+# --- Spare Parts ---
+
+@router.get("/parts", response_model=list[SparePartResponse])
+async def list_parts(user: CurrentUser, db: AsyncSession = Depends(get_db)):
+    await set_tenant_context(db, str(user.tenant_id))
+    return await maintenance_service.list_spare_parts(db)
+
+
+@router.post("/parts", response_model=SparePartResponse, status_code=201)
+async def create_part(
+    data: SparePartCreate, user: CurrentUser, db: AsyncSession = Depends(get_db)
+):
+    await set_tenant_context(db, str(user.tenant_id))
+    return await maintenance_service.create_spare_part(db, user.tenant_id, data)
+
+
+@router.patch("/parts/{part_id}", response_model=SparePartResponse)
+async def update_part(
+    part_id: uuid.UUID, data: SparePartUpdate, user: CurrentUser, db: AsyncSession = Depends(get_db)
+):
+    await set_tenant_context(db, str(user.tenant_id))
+    part = await maintenance_service.get_spare_part(db, part_id)
+    if not part:
+        raise HTTPException(status_code=404, detail="Part not found")
+    return await maintenance_service.update_spare_part(db, part, data)
+
+
+@router.delete("/parts/{part_id}", status_code=204)
+async def delete_part(
+    part_id: uuid.UUID, user: CurrentUser, db: AsyncSession = Depends(get_db)
+):
+    await set_tenant_context(db, str(user.tenant_id))
+    part = await maintenance_service.get_spare_part(db, part_id)
+    if not part:
+        raise HTTPException(status_code=404, detail="Part not found")
+    await maintenance_service.delete_spare_part(db, part)

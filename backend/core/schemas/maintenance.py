@@ -226,6 +226,56 @@ class PMTemplateResponse(BaseModel):
     applicable_machine_types: list[str]
 
 
+# --- Spare Parts ---
+
+class SparePartCreate(BaseModel):
+    name: str
+    part_number: str | None = None
+    description: str | None = None
+    category: str | None = None
+    supplier: str | None = None
+    unit_cost: Decimal | None = None
+    quantity_in_stock: int = 0
+    min_stock_level: int = 1
+    location: str | None = None
+    machine_ids: list[str] | None = None
+
+
+class SparePartUpdate(BaseModel):
+    name: str | None = None
+    part_number: str | None = None
+    description: str | None = None
+    category: str | None = None
+    supplier: str | None = None
+    unit_cost: Decimal | None = None
+    quantity_in_stock: int | None = None
+    min_stock_level: int | None = None
+    location: str | None = None
+    machine_ids: list[str] | None = None
+    is_active: bool | None = None
+
+
+class SparePartResponse(BaseModel):
+    id: UUID
+    tenant_id: UUID
+    name: str
+    part_number: str | None
+    description: str | None
+    category: str | None
+    supplier: str | None
+    unit_cost: Decimal | None
+    quantity_in_stock: int
+    min_stock_level: int
+    location: str | None
+    machine_ids: list | None
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 # --- Service Providers ---
 
 class ServiceProviderCreate(BaseModel):

@@ -10,6 +10,7 @@ from core.models.maintenance import (
     MaintenanceAlert,
     MaintenanceWorkOrder,
     ServiceProvider,
+    SparePart,
 )
 from core.schemas.maintenance import (
     AlertCreate,
@@ -160,3 +161,42 @@ async def create_service_provider(
     await db.flush()
     await db.refresh(provider)
     return provider
+
+
+# --- Spare Parts ---
+
+async def list_spare_parts(db: AsyncSession) -> list[SparePart]:
+    result = await db.execute(
+        select(SparePart).where(SparePart.is_active).order_by(SparePart.name)
+    )
+    return list(result.scalars().all())
+
+
+async def get_spare_part(db: AsyncSession, part_id: uuid.UUID) -> SparePart | None:
+    result = await db.execute(select(SparePart).where(SparePart.id == part_id))
+    return result.scalar_one_or_none()
+
+
+async def create_spare_part(
+    db: AsyncSession, tenant_id: uuid.UUID, data
+) -> SparePart:
+    part = SparePart(tenant_id=tenant_id, **data.model_dump(exclude_unset=True))
+    db.add(part)
+    await db.flush()
+    await db.refresh(part)
+    return part
+
+
+async def update_spare_part(db: AsyncSession, part: SparePart, data) -> SparePart:
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(part, field, value)
+    part.updated_at = datetime.utcnow()
+    await db.flush()
+    await db.refresh(part)
+    return part
+
+
+async def delete_spare_part(db: AsyncSession, part: SparePart) -> None:
+    part.is_active = False
+    part.updated_at = datetime.utcnow()
+    await db.flush()
