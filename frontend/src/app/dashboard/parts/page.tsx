@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/store/auth';
-import { Plus, Pencil, Trash2, AlertTriangle } from 'lucide-react';
+import { Plus, Pencil, Trash2, AlertTriangle, Barcode, Printer } from 'lucide-react';
+import Barcode128 from 'react-barcode';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -48,6 +49,27 @@ export default function PartsPage() {
 
   // Delete dialog
   const [deletePart, setDeletePart] = useState<SparePart | null>(null);
+
+  // Barcode dialog
+  const [barcodePart, setBarcodePart] = useState<SparePart | null>(null);
+
+  const handlePrintBarcode = () => {
+    const el = document.getElementById('barcode-print-area');
+    if (!el) return;
+    const win = window.open('', '_blank', 'width=400,height=300');
+    if (!win) return;
+    win.document.write(`
+      <html><head><title>Print Label</title>
+      <style>body{margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif}
+      .label{text-align:center;padding:10px}
+      .label p{margin:4px 0;font-size:12px}
+      .label .name{font-weight:bold;font-size:14px}
+      @media print{body{margin:0}}</style></head>
+      <body><div class="label">${el.innerHTML}</div>
+      <script>window.onload=function(){window.print();window.close()}</script></body></html>
+    `);
+    win.document.close();
+  };
 
   const showFeedback = (msg: string) => { setFeedback(msg); setTimeout(() => setFeedback(''), 3000); };
 
@@ -199,8 +221,9 @@ export default function PartsPage() {
                     {isAdmin && (
                       <td className="px-5 py-4 text-right">
                         <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(part)}><Pencil className="h-3.5 w-3.5" /></Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-300" onClick={() => setDeletePart(part)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setBarcodePart(part)} title="Barcode"><Barcode className="h-3.5 w-3.5" /></Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(part)} title="Edit"><Pencil className="h-3.5 w-3.5" /></Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-300" onClick={() => setDeletePart(part)} title="Delete"><Trash2 className="h-3.5 w-3.5" /></Button>
                         </div>
                       </td>
                     )}
@@ -256,6 +279,38 @@ export default function PartsPage() {
           <DialogFooter>
             <Button onClick={handleSave} disabled={submitting || !formName.trim()}>
               {submitting ? 'Saving...' : editPart ? 'Save Changes' : 'Add Part'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Barcode Label Dialog */}
+      <Dialog open={!!barcodePart} onOpenChange={(open) => { if (!open) setBarcodePart(null); }}>
+        <DialogContent className="max-w-sm text-center">
+          <DialogHeader>
+            <DialogTitle>Part Label</DialogTitle>
+            <DialogDescription>{barcodePart?.name}</DialogDescription>
+          </DialogHeader>
+          <div id="barcode-print-area" className="flex flex-col items-center py-4 bg-white rounded-lg">
+            {barcodePart && (
+              <>
+                <Barcode128
+                  value={barcodePart.part_number || barcodePart.id.slice(0, 12)}
+                  width={2}
+                  height={60}
+                  fontSize={12}
+                  background="#ffffff"
+                  lineColor="#000000"
+                />
+                <p style={{ color: '#000', fontWeight: 'bold', fontSize: '14px', margin: '8px 0 2px' }}>{barcodePart.name}</p>
+                {barcodePart.part_number && <p style={{ color: '#666', fontSize: '11px', margin: 0 }}>{barcodePart.part_number}</p>}
+                {barcodePart.location && <p style={{ color: '#666', fontSize: '11px', margin: 0 }}>Loc: {barcodePart.location}</p>}
+              </>
+            )}
+          </div>
+          <DialogFooter className="justify-center">
+            <Button onClick={handlePrintBarcode}>
+              <Printer className="h-4 w-4 mr-1" /> Print Label
             </Button>
           </DialogFooter>
         </DialogContent>
