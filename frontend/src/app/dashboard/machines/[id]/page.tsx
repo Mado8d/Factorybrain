@@ -268,7 +268,7 @@ export default function MachineDetailPage() {
       </div>
 
       {/* Info Cards */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="bg-card rounded-xl border border-border p-4">
           <p className="text-xs text-muted-foreground">Status</p>
           {isAdmin ? (
@@ -483,7 +483,7 @@ export default function MachineDetailPage() {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {nodes.map((node) => (
               <div key={node.id} className="bg-card rounded-xl border border-border p-4 group">
                 <div className="flex items-center justify-between">

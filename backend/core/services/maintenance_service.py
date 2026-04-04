@@ -24,11 +24,12 @@ from core.schemas.maintenance import (
 # --- Alerts ---
 
 async def list_alerts(
-    db: AsyncSession, status: str | None = None
+    db: AsyncSession, status: str | None = None, limit: int = 100, offset: int = 0
 ) -> list[MaintenanceAlert]:
     query = select(MaintenanceAlert).order_by(MaintenanceAlert.created_at.desc())
     if status:
         query = query.where(MaintenanceAlert.status == status)
+    query = query.limit(limit).offset(offset)
     result = await db.execute(query)
     return list(result.scalars().all())
 
@@ -55,9 +56,9 @@ async def update_alert(
 ) -> MaintenanceAlert:
     updates = data.model_dump(exclude_unset=True)
     if updates.get("status") == "acknowledged" and alert.status == "open":
-        alert.acknowledged_at = datetime.utcnow()
+        alert.acknowledged_at = datetime.now(timezone.utc)
     if updates.get("status") == "resolved":
-        alert.resolved_at = datetime.utcnow()
+        alert.resolved_at = datetime.now(timezone.utc)
     for field, value in updates.items():
         setattr(alert, field, value)
     await db.flush()
@@ -76,13 +77,14 @@ async def count_alerts(db: AsyncSession, status: str | None = None) -> int:
 # --- Work Orders ---
 
 async def list_work_orders(
-    db: AsyncSession, status: str | None = None
+    db: AsyncSession, status: str | None = None, limit: int = 100, offset: int = 0
 ) -> list[MaintenanceWorkOrder]:
     query = select(MaintenanceWorkOrder).order_by(
         MaintenanceWorkOrder.created_at.desc()
     )
     if status:
         query = query.where(MaintenanceWorkOrder.status == status)
+    query = query.limit(limit).offset(offset)
     result = await db.execute(query)
     return list(result.scalars().all())
 
@@ -121,7 +123,7 @@ async def update_work_order(
     db: AsyncSession, wo: MaintenanceWorkOrder, data: WorkOrderUpdate
 ) -> MaintenanceWorkOrder:
     updates = data.model_dump(exclude_unset=True)
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     if updates.get("status") == "in_progress" and wo.status != "in_progress":
         wo.started_at = now
     if updates.get("status") == "completed" and wo.status != "completed":
@@ -144,11 +146,11 @@ async def update_work_order(
 
 # --- Service Providers ---
 
-async def list_service_providers(db: AsyncSession) -> list[ServiceProvider]:
+async def list_service_providers(db: AsyncSession, limit: int = 100, offset: int = 0) -> list[ServiceProvider]:
     result = await db.execute(
         select(ServiceProvider).where(ServiceProvider.is_active).order_by(
             ServiceProvider.company_name
-        )
+        ).limit(limit).offset(offset)
     )
     return list(result.scalars().all())
 
@@ -165,9 +167,9 @@ async def create_service_provider(
 
 # --- Spare Parts ---
 
-async def list_spare_parts(db: AsyncSession) -> list[SparePart]:
+async def list_spare_parts(db: AsyncSession, limit: int = 100, offset: int = 0) -> list[SparePart]:
     result = await db.execute(
-        select(SparePart).where(SparePart.is_active).order_by(SparePart.name)
+        select(SparePart).where(SparePart.is_active).order_by(SparePart.name).limit(limit).offset(offset)
     )
     return list(result.scalars().all())
 
@@ -190,7 +192,7 @@ async def create_spare_part(
 async def update_spare_part(db: AsyncSession, part: SparePart, data) -> SparePart:
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(part, field, value)
-    part.updated_at = datetime.utcnow()
+    part.updated_at = datetime.now(timezone.utc)
     await db.flush()
     await db.refresh(part)
     return part
@@ -198,5 +200,5 @@ async def update_spare_part(db: AsyncSession, part: SparePart, data) -> SparePar
 
 async def delete_spare_part(db: AsyncSession, part: SparePart) -> None:
     part.is_active = False
-    part.updated_at = datetime.utcnow()
+    part.updated_at = datetime.now(timezone.utc)
     await db.flush()

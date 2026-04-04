@@ -41,7 +41,7 @@ def _check_tenant(session, tenant: Tenant):
     }
 
     # Set RLS context
-    session.execute(text(f"SET LOCAL app.current_tenant = '{tenant.id}'"))
+    session.execute(text("SET LOCAL app.current_tenant = :tid"), {"tid": str(tenant.id)})
 
     # Escalation check: open alerts older than escalation_minutes get upgraded
     escalation_rules = settings.get("escalation", {})

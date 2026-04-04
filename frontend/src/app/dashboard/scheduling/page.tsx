@@ -113,7 +113,7 @@ export default function SchedulingPage() {
           <p className="text-sm text-muted-foreground mt-2">Create work orders from the Maintenance page or from alerts.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {columns.map((col) => (
             <div key={col.key}>
               <div className="flex items-center justify-between mb-3">

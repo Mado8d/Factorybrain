@@ -62,22 +62,62 @@ class ApiClient {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${API_BASE}${path}`, {
-      ...options,
-      headers,
-    });
+    // Add request timeout (15s)
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
 
-    if (response.status === 401) {
-      throw new Error('Unauthorized');
+    try {
+      const response = await fetch(`${API_BASE}${path}`, {
+        ...options,
+        headers,
+        signal: controller.signal,
+      });
+
+      if (response.status === 401) {
+        // Attempt token refresh before giving up
+        const refreshed = await this.tryRefreshToken();
+        if (refreshed) {
+          headers['Authorization'] = `Bearer ${this.getToken()}`;
+          const retry = await fetch(`${API_BASE}${path}`, { ...options, headers });
+          if (retry.ok) {
+            if (retry.status === 204) return undefined as T;
+            return retry.json();
+          }
+        }
+        this.logout();
+        throw new Error('Unauthorized');
+      }
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.detail || `API error: ${response.status}`);
+      }
+
+      if (response.status === 204) return undefined as T;
+      return response.json();
+    } finally {
+      clearTimeout(timeout);
     }
+  }
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      throw new Error(error.detail || `API error: ${response.status}`);
+  private async tryRefreshToken(): Promise<boolean> {
+    const refreshToken =
+      (typeof window !== 'undefined' && (localStorage.getItem('fb_refresh_token') || sessionStorage.getItem('fb_refresh_token'))) || null;
+    if (!refreshToken) return false;
+
+    try {
+      const response = await fetch(`${API_BASE}/api/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+      if (!response.ok) return false;
+      const data = await response.json();
+      this.setToken(data.access_token);
+      return true;
+    } catch {
+      return false;
     }
-
-    if (response.status === 204) return undefined as T;
-    return response.json();
   }
 
   // --- Auth ---
@@ -440,7 +480,8 @@ class ApiClient {
 
   // --- WebSocket ---
   connectLive(onMessage: (data: any) => void): WebSocket {
-    const ws = new WebSocket(`${WS_BASE}/api/dashboard/ws/telemetry`);
+    const token = this.getToken();
+    const ws = new WebSocket(`${WS_BASE}/api/dashboard/ws/telemetry${token ? `?token=${token}` : ''}`);
     ws.onmessage = (event) => onMessage(JSON.parse(event.data));
     ws.onerror = (error) => console.error('WebSocket error:', error);
     return ws;

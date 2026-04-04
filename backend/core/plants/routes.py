@@ -5,8 +5,11 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.auth.routes import CurrentUser
+from typing import Annotated
+
+from core.auth.routes import CurrentUser, require_role
 from core.database import get_db, set_tenant_context
+from core.models.user import User
 from core.schemas.plant import (
     PlantCreate,
     PlantResponse,
@@ -18,6 +21,8 @@ from core.schemas.plant import (
 from core.services import plant_service
 
 router = APIRouter()
+
+AdminUser = Annotated[User, Depends(require_role("admin", "manager"))]
 
 
 # --- Plants ---
@@ -41,8 +46,9 @@ async def get_plant(
 
 @router.post("/", response_model=PlantResponse, status_code=201)
 async def create_plant(
-    data: PlantCreate, user: CurrentUser, db: AsyncSession = Depends(get_db)
+    data: PlantCreate, user: AdminUser, db: AsyncSession = Depends(get_db)
 ):
+    """Create a new plant (admin/manager only)."""
     await set_tenant_context(db, str(user.tenant_id))
     return await plant_service.create_plant(db, user.tenant_id, data)
 
@@ -51,7 +57,7 @@ async def create_plant(
 async def update_plant(
     plant_id: uuid.UUID,
     data: PlantUpdate,
-    user: CurrentUser,
+    user: AdminUser,
     db: AsyncSession = Depends(get_db),
 ):
     await set_tenant_context(db, str(user.tenant_id))
@@ -63,8 +69,9 @@ async def update_plant(
 
 @router.delete("/{plant_id}", status_code=204)
 async def delete_plant(
-    plant_id: uuid.UUID, user: CurrentUser, db: AsyncSession = Depends(get_db)
+    plant_id: uuid.UUID, user: AdminUser, db: AsyncSession = Depends(get_db)
 ):
+    """Delete a plant (admin/manager only)."""
     await set_tenant_context(db, str(user.tenant_id))
     plant = await plant_service.get_plant(db, plant_id)
     if not plant:
@@ -86,7 +93,7 @@ async def list_lines(
 async def create_line(
     plant_id: uuid.UUID,
     data: ProductionLineCreate,
-    user: CurrentUser,
+    user: AdminUser,
     db: AsyncSession = Depends(get_db),
 ):
     await set_tenant_context(db, str(user.tenant_id))

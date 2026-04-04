@@ -11,8 +11,8 @@ from core.models.sensor_reading import SensorReading
 from core.schemas.machine import MachineCreate, MachineUpdate
 
 
-async def list_machines(db: AsyncSession) -> list[Machine]:
-    result = await db.execute(select(Machine).order_by(Machine.name))
+async def list_machines(db: AsyncSession, limit: int = 100, offset: int = 0) -> list[Machine]:
+    result = await db.execute(select(Machine).order_by(Machine.name).limit(limit).offset(offset))
     return list(result.scalars().all())
 
 
@@ -36,7 +36,7 @@ async def update_machine(
 ) -> Machine:
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(machine, field, value)
-    machine.updated_at = datetime.utcnow()
+    machine.updated_at = datetime.now(timezone.utc)
     await db.flush()
     await db.refresh(machine)
     return machine

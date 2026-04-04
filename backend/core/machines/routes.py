@@ -30,10 +30,15 @@ class ThresholdOverrides(BaseModel):
 
 
 @router.get("/", response_model=list[MachineResponse])
-async def list_machines(user: CurrentUser, db: AsyncSession = Depends(get_db)):
+async def list_machines(
+    user: CurrentUser,
+    db: AsyncSession = Depends(get_db),
+    limit: int = 100,
+    offset: int = 0,
+):
     """List all machines for the current tenant."""
     await set_tenant_context(db, str(user.tenant_id))
-    return await machine_service.list_machines(db)
+    return await machine_service.list_machines(db, limit=limit, offset=offset)
 
 
 @router.get("/{machine_id}", response_model=MachineResponse)
@@ -50,9 +55,9 @@ async def get_machine(
 
 @router.post("/", response_model=MachineResponse, status_code=201)
 async def create_machine(
-    data: MachineCreate, user: CurrentUser, db: AsyncSession = Depends(get_db)
+    data: MachineCreate, user: AdminUser, db: AsyncSession = Depends(get_db)
 ):
-    """Create a new machine."""
+    """Create a new machine (admin/manager only)."""
     await set_tenant_context(db, str(user.tenant_id))
     return await machine_service.create_machine(db, user.tenant_id, data)
 
@@ -74,9 +79,9 @@ async def update_machine(
 
 @router.delete("/{machine_id}", status_code=204)
 async def delete_machine(
-    machine_id: uuid.UUID, user: CurrentUser, db: AsyncSession = Depends(get_db)
+    machine_id: uuid.UUID, user: AdminUser, db: AsyncSession = Depends(get_db)
 ):
-    """Delete a machine."""
+    """Delete a machine (admin/manager only)."""
     await set_tenant_context(db, str(user.tenant_id))
     machine = await machine_service.get_machine(db, machine_id)
     if not machine:
@@ -162,9 +167,9 @@ async def update_machine_thresholds(
 @router.get("/{machine_id}/telemetry")
 async def get_machine_telemetry(
     machine_id: uuid.UUID,
-    hours: int = 24,
-    user: CurrentUser = None,
+    user: CurrentUser,
     db: AsyncSession = Depends(get_db),
+    hours: int = 24,
 ):
     """Get recent telemetry data for a machine."""
     await set_tenant_context(db, str(user.tenant_id))

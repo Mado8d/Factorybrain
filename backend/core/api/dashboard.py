@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.auth.routes import CurrentUser
+from core.config import settings
 from core.database import get_db, set_tenant_context
 from core.models.sensor_reading import SensorReading
 from core.models.user import User
@@ -273,15 +274,19 @@ class ConnectionManager:
         self.active_connections.append(websocket)
 
     def disconnect(self, websocket: WebSocket):
-        self.active_connections.remove(websocket)
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
 
     async def broadcast(self, message: dict):
         data = json.dumps(message, default=str)
+        dead: list[WebSocket] = []
         for connection in self.active_connections:
             try:
                 await connection.send_text(data)
             except Exception:
-                pass
+                dead.append(connection)
+        for ws in dead:
+            self.disconnect(ws)
 
 
 ws_manager = ConnectionManager()
@@ -291,8 +296,24 @@ ws_manager = ConnectionManager()
 async def websocket_telemetry(websocket: WebSocket):
     """WebSocket endpoint for real-time telemetry updates.
 
-    Clients connect and receive telemetry broadcasts pushed by the MQTT consumer.
+    Authenticates via token query parameter before accepting connection.
     """
+    # Authenticate WebSocket connection
+    token = websocket.query_params.get("token")
+    if not token:
+        await websocket.close(code=4001, reason="Missing token")
+        return
+
+    try:
+        from jose import JWTError, jwt as jose_jwt
+        payload = jose_jwt.decode(token, settings.secret_key, algorithms=[settings.jwt_algorithm])
+        if not payload.get("sub"):
+            await websocket.close(code=4001, reason="Invalid token")
+            return
+    except JWTError:
+        await websocket.close(code=4001, reason="Invalid token")
+        return
+
     await ws_manager.connect(websocket)
     try:
         while True:

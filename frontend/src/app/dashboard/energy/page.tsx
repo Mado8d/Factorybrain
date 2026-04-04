@@ -93,7 +93,7 @@ export default function EnergyPage() {
         <DateRangePicker value={dateRange} onChange={setDateRange} />
       </div>
 
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="bg-card rounded-xl border border-border p-5">
           <p className="text-sm text-muted-foreground">Grid Consumption</p>
           <p className="text-3xl font-bold text-foreground mt-1">{(totalGrid / 1000).toFixed(1)}<span className="text-base font-normal text-muted-foreground"> kW</span></p>

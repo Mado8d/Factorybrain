@@ -1,6 +1,7 @@
 """File upload routes for machine documents."""
 
 import os
+import re
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -29,9 +30,9 @@ def _machine_dir(machine_id: uuid.UUID) -> Path:
 @router.post("/machines/{machine_id}/documents")
 async def upload_document(
     machine_id: uuid.UUID,
-    file: UploadFile = File(...),
-    user: CurrentUser = None,
+    user: CurrentUser,
     db: AsyncSession = Depends(get_db),
+    file: UploadFile = File(...),
 ):
     """Upload a document for a machine."""
     await set_tenant_context(db, str(user.tenant_id))
@@ -49,9 +50,15 @@ async def upload_document(
     if len(content) > MAX_FILE_SIZE:
         raise HTTPException(status_code=400, detail=f"File too large. Max {MAX_FILE_SIZE // 1024 // 1024}MB")
 
-    # Save with unique prefix to avoid collisions
-    safe_name = f"{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{file.filename}"
+    # Sanitize filename — strip path components
+    clean_name = re.sub(r'[^\w\-.]', '_', Path(file.filename or "file").name)
+    safe_name = f"{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{clean_name}"
     dest = _machine_dir(machine_id) / safe_name
+
+    # Verify path stays within upload dir
+    if not str(dest.resolve()).startswith(str(UPLOAD_DIR.resolve())):
+        raise HTTPException(status_code=400, detail="Invalid filename")
+
     dest.write_bytes(content)
 
     return {
@@ -66,7 +73,7 @@ async def upload_document(
 @router.get("/machines/{machine_id}/documents")
 async def list_documents(
     machine_id: uuid.UUID,
-    user: CurrentUser = None,
+    user: CurrentUser,
     db: AsyncSession = Depends(get_db),
 ):
     """List all documents for a machine."""
@@ -95,7 +102,7 @@ async def list_documents(
 async def delete_document(
     machine_id: uuid.UUID,
     filename: str,
-    user: CurrentUser = None,
+    user: CurrentUser,
     db: AsyncSession = Depends(get_db),
 ):
     """Delete a document."""
@@ -117,8 +124,18 @@ async def delete_document(
 
 
 @router.get("/uploads/{machine_id}/{filename}")
-async def download_document(machine_id: uuid.UUID, filename: str):
-    """Download/serve a document file."""
+async def download_document(
+    machine_id: uuid.UUID,
+    filename: str,
+    user: CurrentUser,
+    db: AsyncSession = Depends(get_db),
+):
+    """Download/serve a document file (authenticated, tenant-checked)."""
+    await set_tenant_context(db, str(user.tenant_id))
+    machine = await machine_service.get_machine(db, machine_id)
+    if not machine:
+        raise HTTPException(status_code=404, detail="Machine not found")
+
     file_path = UPLOAD_DIR / str(machine_id) / filename
     if not file_path.exists() or not file_path.is_file():
         raise HTTPException(status_code=404, detail="File not found")

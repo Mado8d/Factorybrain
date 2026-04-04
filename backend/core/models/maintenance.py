@@ -53,7 +53,7 @@ class ServiceProvider(Base):
         UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
     )
     tenant_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False
+        UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True
     )
     company_name: Mapped[str] = mapped_column(String, nullable=False)
     contact_name: Mapped[str | None] = mapped_column(String, nullable=True)
@@ -78,10 +78,10 @@ class ServiceProviderUser(Base):
         UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
     )
     service_provider_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("service_providers.id"), nullable=False
+        UUID(as_uuid=True), ForeignKey("service_providers.id"), nullable=False, index=True
     )
     tenant_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False
+        UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True
     )
     email: Mapped[str] = mapped_column(String, nullable=False)
     name: Mapped[str] = mapped_column(String, nullable=False)
@@ -101,13 +101,13 @@ class MaintenanceAlert(Base):
         UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
     )
     tenant_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False
+        UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True
     )
     machine_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("machines.id"), nullable=False
+        UUID(as_uuid=True), ForeignKey("machines.id"), nullable=False, index=True
     )
     node_id: Mapped[str | None] = mapped_column(
-        String, ForeignKey("sensor_nodes.id"), nullable=True
+        String, ForeignKey("sensor_nodes.id"), nullable=True, index=True
     )
     alert_type: Mapped[str] = mapped_column(String, nullable=False)
     severity: Mapped[str] = mapped_column(String, nullable=False, server_default="info")
@@ -137,7 +137,7 @@ class PreventiveMaintenanceSchedule(Base):
     name: Mapped[str] = mapped_column(String, nullable=False)
     description: Mapped[str | None] = mapped_column(String, nullable=True)
     machine_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("machines.id"), nullable=False
+        UUID(as_uuid=True), ForeignKey("machines.id"), nullable=False, index=True
     )
     category: Mapped[str | None] = mapped_column(String, nullable=True)
     priority: Mapped[str] = mapped_column(String, server_default="medium")
@@ -198,7 +198,7 @@ class PMOccurrence(Base):
         UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
     )
     tenant_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False
+        UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True
     )
     schedule_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("pm_schedules.id"), nullable=False, index=True
@@ -225,7 +225,7 @@ class MaintenanceWorkOrder(Base):
         UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
     )
     tenant_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False
+        UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True
     )
     wo_number: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     trigger_type: Mapped[str] = mapped_column(String, nullable=False)
@@ -233,7 +233,7 @@ class MaintenanceWorkOrder(Base):
         UUID(as_uuid=True), ForeignKey("maintenance_alerts.id"), nullable=True
     )
     machine_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("machines.id"), nullable=False
+        UUID(as_uuid=True), ForeignKey("machines.id"), nullable=False, index=True
     )
     title: Mapped[str] = mapped_column(String, nullable=False)
     description: Mapped[str | None] = mapped_column(String, nullable=True)

@@ -9,8 +9,8 @@ from sqlalchemy.orm import sessionmaker
 from core.config import settings
 
 # --- Async engine (FastAPI) ---
-_pool_size = 5 if settings.environment == "production" else 20
-_max_overflow = 3 if settings.environment == "production" else 10
+_pool_size = 20 if settings.environment == "production" else 5
+_max_overflow = 10 if settings.environment == "production" else 3
 
 engine = create_async_engine(
     settings.database_url,
@@ -49,4 +49,4 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 async def set_tenant_context(session: AsyncSession, tenant_id: str) -> None:
     """Set the current tenant for Row-Level Security policies."""
     from sqlalchemy import text
-    await session.execute(text(f"SET LOCAL app.current_tenant = '{tenant_id}'"))
+    await session.execute(text("SET LOCAL app.current_tenant = :tid"), {"tid": tenant_id})

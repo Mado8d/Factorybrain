@@ -63,7 +63,11 @@ class MQTTService:
 
     async def _handle_message(self, message: aiomqtt.Message):
         """Parse and store a telemetry message."""
-        payload = json.loads(message.payload)
+        try:
+            payload = json.loads(message.payload)
+        except (json.JSONDecodeError, TypeError) as e:
+            logger.warning(f"Malformed MQTT payload on {message.topic}: {e}")
+            return
 
         vibration = payload.get("vibration", {})
         power = payload.get("power", {})

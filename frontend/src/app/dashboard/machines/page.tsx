@@ -136,55 +136,77 @@ export default function MachinesPage() {
         </div>
       ) : (
         <div className="bg-card rounded-xl border border-border overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border bg-secondary">
-                <th className="text-left text-xs font-medium text-muted-foreground px-5 py-3">Machine</th>
-                <th className="text-left text-xs font-medium text-muted-foreground px-5 py-3">Type</th>
-                <th className="text-left text-xs font-medium text-muted-foreground px-5 py-3">Manufacturer</th>
-                <th className="text-left text-xs font-medium text-muted-foreground px-5 py-3">Power</th>
-                <th className="text-left text-xs font-medium text-muted-foreground px-5 py-3">Year</th>
-                <th className="text-left text-xs font-medium text-muted-foreground px-5 py-3">Status</th>
-                {isAdmin && <th className="text-right text-xs font-medium text-muted-foreground px-5 py-3">Actions</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {machines.map((machine) => {
-                const config = statusConfig[machine.status] || statusConfig.inactive;
-                return (
-                  <tr key={machine.id} className="border-b border-border last:border-0 hover:bg-accent transition-colors group">
-                    <td className="px-5 py-4">
-                      <Link href={`/dashboard/machines/${machine.id}`} className="hover:text-brand-400">
-                        <p className="font-medium text-foreground">{machine.name}</p>
-                        {machine.asset_tag && <p className="text-xs text-muted-foreground">{machine.asset_tag}</p>}
-                      </Link>
-                    </td>
-                    <td className="px-5 py-4 text-sm text-muted-foreground">{machine.machine_type || '\u2014'}</td>
-                    <td className="px-5 py-4 text-sm text-muted-foreground">
-                      {machine.manufacturer ? `${machine.manufacturer}${machine.model ? ` ${machine.model}` : ''}` : '\u2014'}
-                    </td>
-                    <td className="px-5 py-4 text-sm text-muted-foreground">{machine.rated_power_kw != null ? `${machine.rated_power_kw} kW` : '\u2014'}</td>
-                    <td className="px-5 py-4 text-sm text-muted-foreground">{machine.year_installed || '\u2014'}</td>
-                    <td className="px-5 py-4">
-                      <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${config.color}`}>{config.label}</span>
-                    </td>
-                    {isAdmin && (
-                      <td className="px-5 py-4 text-right">
-                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditMachine(machine)} title="Edit">
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-300" onClick={() => setDeleteMachine(machine)} title="Delete">
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
+          {/* Desktop table */}
+          <div className="hidden md:block">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border bg-secondary">
+                  <th className="text-left text-xs font-medium text-muted-foreground px-5 py-3">Machine</th>
+                  <th className="text-left text-xs font-medium text-muted-foreground px-5 py-3">Type</th>
+                  <th className="text-left text-xs font-medium text-muted-foreground px-5 py-3">Manufacturer</th>
+                  <th className="text-left text-xs font-medium text-muted-foreground px-5 py-3">Power</th>
+                  <th className="text-left text-xs font-medium text-muted-foreground px-5 py-3">Year</th>
+                  <th className="text-left text-xs font-medium text-muted-foreground px-5 py-3">Status</th>
+                  {isAdmin && <th className="text-right text-xs font-medium text-muted-foreground px-5 py-3">Actions</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {machines.map((machine) => {
+                  const config = statusConfig[machine.status] || statusConfig.inactive;
+                  return (
+                    <tr key={machine.id} className="border-b border-border last:border-0 hover:bg-accent transition-colors group">
+                      <td className="px-5 py-4">
+                        <Link href={`/dashboard/machines/${machine.id}`} className="hover:text-brand-400">
+                          <p className="font-medium text-foreground">{machine.name}</p>
+                          {machine.asset_tag && <p className="text-xs text-muted-foreground">{machine.asset_tag}</p>}
+                        </Link>
                       </td>
-                    )}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      <td className="px-5 py-4 text-sm text-muted-foreground">{machine.machine_type || '\u2014'}</td>
+                      <td className="px-5 py-4 text-sm text-muted-foreground">
+                        {machine.manufacturer ? `${machine.manufacturer}${machine.model ? ` ${machine.model}` : ''}` : '\u2014'}
+                      </td>
+                      <td className="px-5 py-4 text-sm text-muted-foreground">{machine.rated_power_kw != null ? `${machine.rated_power_kw} kW` : '\u2014'}</td>
+                      <td className="px-5 py-4 text-sm text-muted-foreground">{machine.year_installed || '\u2014'}</td>
+                      <td className="px-5 py-4">
+                        <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${config.color}`}>{config.label}</span>
+                      </td>
+                      {isAdmin && (
+                        <td className="px-5 py-4 text-right">
+                          <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditMachine(machine)} title="Edit">
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-300" onClick={() => setDeleteMachine(machine)} title="Delete">
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          {/* Mobile card layout */}
+          <div className="md:hidden divide-y divide-border">
+            {machines.map((machine) => {
+              const config = statusConfig[machine.status] || statusConfig.inactive;
+              return (
+                <Link key={machine.id} href={`/dashboard/machines/${machine.id}`} className="block p-4 hover:bg-accent transition-colors">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="font-medium text-foreground">{machine.name}</p>
+                    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${config.color}`}>{config.label}</span>
+                  </div>
+                  <div className="flex gap-3 text-xs text-muted-foreground">
+                    {machine.machine_type && <span>{machine.machine_type}</span>}
+                    {machine.manufacturer && <span>{machine.manufacturer}</span>}
+                    {machine.rated_power_kw != null && <span>{machine.rated_power_kw} kW</span>}
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
         </div>
       )}
 

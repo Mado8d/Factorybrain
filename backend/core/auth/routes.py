@@ -104,7 +104,7 @@ async def get_current_user(
 
     # Set tenant context for RLS
     from sqlalchemy import text
-    await db.execute(text(f"SET LOCAL app.current_tenant = '{user.tenant_id}'"))
+    await db.execute(text("SET LOCAL app.current_tenant = :tid"), {"tid": str(user.tenant_id)})
 
     return user
 
@@ -141,6 +141,37 @@ async def login(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
         )
+
+    return create_tokens(user)
+
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+
+
+@router.post("/refresh", response_model=Token)
+async def refresh_token(
+    data: RefreshTokenRequest,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """Refresh access token using a valid refresh token."""
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid refresh token",
+    )
+    try:
+        payload = jwt.decode(data.refresh_token, settings.secret_key, algorithms=[settings.jwt_algorithm])
+        user_id: str | None = payload.get("sub")
+        token_type: str | None = payload.get("type")
+        if user_id is None or token_type != "refresh":
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if user is None or not user.is_active:
+        raise credentials_exception
 
     return create_tokens(user)
 

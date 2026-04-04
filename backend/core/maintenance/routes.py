@@ -29,12 +29,14 @@ router = APIRouter()
 
 @router.get("/alerts", response_model=list[AlertResponse])
 async def list_alerts(
-    status: str | None = None,
-    user: CurrentUser = None,
+    user: CurrentUser,
     db: AsyncSession = Depends(get_db),
+    status: str | None = None,
+    limit: int = 100,
+    offset: int = 0,
 ):
     await set_tenant_context(db, str(user.tenant_id))
-    return await maintenance_service.list_alerts(db, status)
+    return await maintenance_service.list_alerts(db, status, limit=limit, offset=offset)
 
 
 @router.get("/alerts/{alert_id}", response_model=AlertResponse)
@@ -74,12 +76,14 @@ async def update_alert(
 
 @router.get("/work-orders", response_model=list[WorkOrderResponse])
 async def list_work_orders(
-    status: str | None = None,
-    user: CurrentUser = None,
+    user: CurrentUser,
     db: AsyncSession = Depends(get_db),
+    status: str | None = None,
+    limit: int = 100,
+    offset: int = 0,
 ):
     await set_tenant_context(db, str(user.tenant_id))
-    return await maintenance_service.list_work_orders(db, status)
+    return await maintenance_service.list_work_orders(db, status, limit=limit, offset=offset)
 
 
 @router.get("/work-orders/{wo_id}", response_model=WorkOrderResponse)

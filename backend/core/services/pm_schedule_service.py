@@ -94,7 +94,7 @@ async def update_pm_schedule(
 ) -> PreventiveMaintenanceSchedule:
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(schedule, field, value)
-    schedule.updated_at = datetime.utcnow()
+    schedule.updated_at = datetime.now(timezone.utc)
 
     # Recalculate next due if interval changed
     if data.calendar_interval_days is not None and schedule.trigger_type in ("calendar", "hybrid"):
@@ -114,7 +114,7 @@ async def delete_pm_schedule(
 ) -> None:
     """Soft delete — deactivate the schedule."""
     schedule.is_active = False
-    schedule.updated_at = datetime.utcnow()
+    schedule.updated_at = datetime.now(timezone.utc)
     await db.flush()
 
 
@@ -226,7 +226,7 @@ async def complete_occurrence(
         )
         db.add(next_occ)
 
-    schedule.updated_at = datetime.utcnow()
+    schedule.updated_at = datetime.now(timezone.utc)
     await db.flush()
     return occurrence
 
@@ -254,7 +254,7 @@ async def skip_occurrence(
             status="upcoming",
         )
         db.add(next_occ)
-        schedule.updated_at = datetime.utcnow()
+        schedule.updated_at = datetime.now(timezone.utc)
 
     await db.flush()
     return occurrence
