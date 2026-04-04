@@ -17,3 +17,9 @@ RUN chown -R appuser:appuser /app
 USER appuser
 # -B flag embeds Beat scheduler into the worker (no separate container needed)
 CMD ["celery", "-A", "core.celery_app:celery_app", "worker", "-B", "--loglevel=info", "--concurrency=1", "--max-tasks-per-child=100"]
+
+FROM base AS simulator
+COPY . .
+RUN chown -R appuser:appuser /app
+USER appuser
+ENTRYPOINT ["python", "-m", "scripts.db_simulator"]

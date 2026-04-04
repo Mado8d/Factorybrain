@@ -7,7 +7,7 @@ import { useAuth } from '@/store/auth';
 import { useState } from 'react';
 import {
   Factory, Cog, Cpu, Wrench, Calendar, Zap, BarChart3, Settings, LogOut,
-  Map, FolderTree, Package, Menu, X,
+  Map, FolderTree, Package, Menu, X, Users,
 } from 'lucide-react';
 
 const navigation = [
@@ -21,8 +21,9 @@ const navigation = [
   { name: 'Parts', href: '/dashboard/parts', icon: Package },
   { name: 'Energy', href: '/dashboard/energy', icon: Zap },
   { name: 'Reports', href: '/dashboard/reports', icon: BarChart3 },
+  { name: 'Users', href: '/dashboard/users', icon: Users, adminOnly: true },
   { name: 'Settings', href: '/dashboard/settings', icon: Settings },
-];
+] as const;
 
 export default function DashboardLayout({
   children,
@@ -65,7 +66,9 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
 
         {/* Navigation */}
         <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
-          {navigation.map((item) => {
+          {navigation
+            .filter((item) => !('adminOnly' in item && item.adminOnly) || user?.role === 'admin' || user?.role === 'superadmin')
+            .map((item) => {
             const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
             const Icon = item.icon;
             return (

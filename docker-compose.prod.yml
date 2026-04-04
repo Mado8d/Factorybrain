@@ -146,6 +146,26 @@ services:
         limits:
           memory: 128M
 
+  # ============================================================
+  # Simulator — Backfill historical data + live sensor simulation
+  # ============================================================
+  simulator:
+    build:
+      context: ./backend
+      target: simulator
+    container_name: fb-simulator
+    command: ["--mode", "healthy", "--backfill", "7", "--interval", "5"]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-factorybrain}:${POSTGRES_PASSWORD}@timescaledb:5432/${POSTGRES_DB:-factorybrain}
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    restart: "no"
+
   # NOTE: Caddy removed — use Coolify's built-in reverse proxy instead.
   # NOTE: MinIO removed — not needed until report generation is implemented.
   #       Re-add later or use Hetzner Object Storage (S3-compatible, external).

@@ -14,6 +14,17 @@ export interface User {
   tenant_id: string;
 }
 
+export interface UserDetails {
+  id: string;
+  tenant_id: string;
+  email: string;
+  name: string;
+  role: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface LoginResponse {
   access_token: string;
   refresh_token: string;
@@ -464,6 +475,58 @@ class ApiClient {
       method: 'PUT',
       body: JSON.stringify(settings),
     });
+  }
+
+  // --- Users ---
+  async getUsers(params?: { include_inactive?: boolean; limit?: number; offset?: number }) {
+    const sp = new URLSearchParams();
+    if (params?.include_inactive) sp.set('include_inactive', 'true');
+    if (params?.limit) sp.set('limit', String(params.limit));
+    if (params?.offset) sp.set('offset', String(params.offset));
+    const qs = sp.toString();
+    return this.request<UserDetails[]>(`/api/users${qs ? `?${qs}` : ''}`);
+  }
+
+  async getUser(id: string) {
+    return this.request<UserDetails>(`/api/users/${id}`);
+  }
+
+  async createUser(data: { email: string; name: string; role: string; password: string }) {
+    return this.request<UserDetails>('/api/users', { method: 'POST', body: JSON.stringify(data) });
+  }
+
+  async updateUser(id: string, data: { name?: string; email?: string; role?: string; is_active?: boolean }) {
+    return this.request<UserDetails>(`/api/users/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+  }
+
+  async deactivateUser(id: string) {
+    return this.request<UserDetails>(`/api/users/${id}/deactivate`, { method: 'POST' });
+  }
+
+  async activateUser(id: string) {
+    return this.request<UserDetails>(`/api/users/${id}/activate`, { method: 'POST' });
+  }
+
+  async resetUserPassword(id: string, newPassword: string) {
+    return this.request(`/api/users/${id}/reset-password`, {
+      method: 'POST',
+      body: JSON.stringify({ new_password: newPassword }),
+    });
+  }
+
+  async changeMyPassword(currentPassword: string, newPassword: string) {
+    return this.request('/api/users/me/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+    });
+  }
+
+  async updateMyProfile(data: { name?: string }) {
+    return this.request<UserDetails>('/api/users/me', { method: 'PATCH', body: JSON.stringify(data) });
+  }
+
+  async getRoles() {
+    return this.request<{ roles: { value: string; label: string; level: number }[]; assignable: string[]; current_role: string }>('/api/users/roles');
   }
 
   // --- Dashboard Preferences ---

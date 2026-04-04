@@ -9,6 +9,7 @@ from core.plants.routes import router as plants_router
 from core.maintenance.routes import router as maintenance_router
 from core.maintenance.pm_routes import router as pm_router
 from core.tenants.routes import router as tenants_router
+from core.users.routes import router as users_router
 from core.api.dashboard import router as dashboard_router
 from core.api.uploads import router as uploads_router
 from core.api.diagnostics import router as diagnostics_router
@@ -17,6 +18,7 @@ api_router = APIRouter()
 
 # Core routes
 api_router.include_router(auth_router, prefix="/auth", tags=["auth"])
+api_router.include_router(users_router, prefix="/users", tags=["users"])
 api_router.include_router(dashboard_router, prefix="/dashboard", tags=["dashboard"])
 api_router.include_router(uploads_router, tags=["uploads"])
 api_router.include_router(diagnostics_router, tags=["diagnostics"])

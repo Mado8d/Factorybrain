@@ -3,9 +3,20 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/store/auth';
 import { useDashboard, ThresholdSettings } from '@/store/dashboard';
+import { api } from '@/lib/api';
+import { Eye, EyeOff } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+
+const ROLE_COLORS: Record<string, string> = {
+  superadmin: 'bg-red-500/10 text-red-400',
+  admin: 'bg-purple-500/10 text-purple-400',
+  manager: 'bg-blue-500/10 text-blue-400',
+  operator: 'bg-amber-500/10 text-amber-400',
+  viewer: 'bg-gray-500/10 text-gray-400',
+};
 
 export default function SettingsPage() {
-  const { user } = useAuth();
+  const { user, loadUser } = useAuth();
   const { tenantSettings, loadAll, saveTenantSettings } = useDashboard();
   const [thresholds, setThresholds] = useState<ThresholdSettings>(tenantSettings.thresholds);
   const [refreshInterval, setRefreshInterval] = useState(tenantSettings.refresh_interval_seconds);
@@ -13,7 +24,20 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  const isAdmin = user?.role === 'admin' || user?.role === 'manager';
+  // Profile editing
+  const [editName, setEditName] = useState(user?.name || '');
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileMsg, setProfileMsg] = useState<string | null>(null);
+
+  // Password change
+  const [currentPw, setCurrentPw] = useState('');
+  const [newPw, setNewPw] = useState('');
+  const [confirmPw, setConfirmPw] = useState('');
+  const [showPw, setShowPw] = useState(false);
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwMsg, setPwMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const isAdmin = user?.role === 'admin' || user?.role === 'manager' || user?.role === 'superadmin';
 
   useEffect(() => { loadAll(); }, [loadAll]);
   useEffect(() => {
@@ -21,6 +45,7 @@ export default function SettingsPage() {
     setRefreshInterval(tenantSettings.refresh_interval_seconds);
     setEscalationMinutes((tenantSettings as any).escalation?.warning_to_critical_minutes ?? 60);
   }, [tenantSettings]);
+  useEffect(() => { setEditName(user?.name || ''); }, [user?.name]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -28,6 +53,45 @@ export default function SettingsPage() {
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
+  };
+
+  const handleProfileSave = async () => {
+    setProfileSaving(true);
+    setProfileMsg(null);
+    try {
+      await api.updateMyProfile({ name: editName });
+      await loadUser();
+      setProfileMsg('Profile updated!');
+      setTimeout(() => setProfileMsg(null), 2000);
+    } catch (err: any) {
+      setProfileMsg(err.message || 'Failed to update profile');
+    } finally {
+      setProfileSaving(false);
+    }
+  };
+
+  const handlePasswordChange = async () => {
+    setPwMsg(null);
+    if (newPw !== confirmPw) {
+      setPwMsg({ type: 'error', text: 'Passwords do not match' });
+      return;
+    }
+    if (newPw.length < 8) {
+      setPwMsg({ type: 'error', text: 'Password must be at least 8 characters' });
+      return;
+    }
+    setPwSaving(true);
+    try {
+      await api.changeMyPassword(currentPw, newPw);
+      setPwMsg({ type: 'success', text: 'Password changed successfully!' });
+      setCurrentPw('');
+      setNewPw('');
+      setConfirmPw('');
+    } catch (err: any) {
+      setPwMsg({ type: 'error', text: err.message || 'Failed to change password' });
+    } finally {
+      setPwSaving(false);
+    }
   };
 
   const ThresholdField = ({ label, field, unit }: { label: string; field: keyof ThresholdSettings; unit: string }) => (
@@ -42,16 +106,76 @@ export default function SettingsPage() {
     <div>
       <h1 className="text-2xl font-bold text-foreground mb-6">Settings</h1>
 
+      {/* Profile Section — editable name */}
       <section className="bg-card rounded-xl border border-border p-6 mb-6">
         <h2 className="text-lg font-semibold text-foreground mb-4">Profile</h2>
-        <div className="grid grid-cols-2 gap-4">
-          <div><label className="block text-sm font-medium text-foreground mb-1">Name</label><input type="text" value={user?.name || ''} disabled className="w-full px-3 py-2 border border-border bg-muted rounded-lg text-sm text-muted-foreground" /></div>
-          <div><label className="block text-sm font-medium text-foreground mb-1">Email</label><input type="email" value={user?.email || ''} disabled className="w-full px-3 py-2 border border-border bg-muted rounded-lg text-sm text-muted-foreground" /></div>
-          <div><label className="block text-sm font-medium text-foreground mb-1">Role</label><input type="text" value={user?.role || ''} disabled className="w-full px-3 py-2 border border-border bg-muted rounded-lg text-sm text-muted-foreground capitalize" /></div>
-          <div><label className="block text-sm font-medium text-foreground mb-1">Tenant ID</label><input type="text" value={user?.tenant_id || ''} disabled className="w-full px-3 py-2 border border-border bg-muted rounded-lg text-sm text-muted-foreground font-mono text-xs" /></div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">Name</label>
+            <input type="text" value={editName} onChange={(e) => setEditName(e.target.value)}
+              className="w-full px-3 py-2 border border-border bg-card rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">Email</label>
+            <input type="email" value={user?.email || ''} disabled
+              className="w-full px-3 py-2 border border-border bg-muted rounded-lg text-sm text-muted-foreground" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">Role</label>
+            <span className={`inline-flex px-2.5 py-1 rounded text-xs font-medium ${ROLE_COLORS[user?.role || ''] || ROLE_COLORS.viewer}`}>
+              {user?.role || ''}
+            </span>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">Tenant ID</label>
+            <input type="text" value={user?.tenant_id || ''} disabled
+              className="w-full px-3 py-2 border border-border bg-muted rounded-lg text-sm text-muted-foreground font-mono text-xs" />
+          </div>
+        </div>
+        <div className="flex items-center gap-3 mt-4">
+          <Button onClick={handleProfileSave} disabled={profileSaving || editName === user?.name} size="sm">
+            {profileSaving ? 'Saving...' : 'Update Profile'}
+          </Button>
+          {profileMsg && <span className="text-sm text-green-400">{profileMsg}</span>}
         </div>
       </section>
 
+      {/* Password Change */}
+      <section className="bg-card rounded-xl border border-border p-6 mb-6">
+        <h2 className="text-lg font-semibold text-foreground mb-4">Change Password</h2>
+        <div className="max-w-md space-y-3">
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">Current Password</label>
+            <div className="relative">
+              <input type={showPw ? 'text' : 'password'} value={currentPw} onChange={(e) => setCurrentPw(e.target.value)}
+                className="w-full px-3 py-2 pr-10 border border-border bg-card rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+              <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">New Password</label>
+            <input type={showPw ? 'text' : 'password'} value={newPw} onChange={(e) => setNewPw(e.target.value)} minLength={8}
+              className="w-full px-3 py-2 border border-border bg-card rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring" placeholder="Min. 8 characters" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1">Confirm New Password</label>
+            <input type={showPw ? 'text' : 'password'} value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} minLength={8}
+              className="w-full px-3 py-2 border border-border bg-card rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring" />
+          </div>
+          {pwMsg && (
+            <div className={`text-sm px-3 py-2 rounded-lg ${pwMsg.type === 'success' ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
+              {pwMsg.text}
+            </div>
+          )}
+          <Button onClick={handlePasswordChange} disabled={pwSaving || !currentPw || !newPw || !confirmPw} size="sm">
+            {pwSaving ? 'Changing...' : 'Change Password'}
+          </Button>
+        </div>
+      </section>
+
+      {/* Thresholds */}
       <section className="bg-card rounded-xl border border-border p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-foreground">Thresholds & Alerts</h2>
