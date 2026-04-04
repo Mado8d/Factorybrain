@@ -103,8 +103,8 @@ async def get_current_user(
         raise credentials_exception
 
     # Set tenant context for RLS
-    from sqlalchemy import text
-    await db.execute(text("SET LOCAL app.current_tenant = :tid"), {"tid": str(user.tenant_id)})
+    from core.database import set_tenant_context
+    await set_tenant_context(db, str(user.tenant_id))
 
     return user
 

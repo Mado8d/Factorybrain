@@ -40,8 +40,12 @@ def _check_tenant(session, tenant: Tenant):
         **settings.get("thresholds", {}),
     }
 
-    # Set RLS context
-    session.execute(text("SET LOCAL app.current_tenant = :tid"), {"tid": str(tenant.id)})
+    # Set RLS context — SET doesn't support bind params in PostgreSQL
+    import re
+    tid = str(tenant.id)
+    if not re.match(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', tid):
+        raise ValueError(f"Invalid tenant_id: {tid}")
+    session.execute(text(f"SET LOCAL app.current_tenant = '{tid}'"))
 
     # Escalation check: open alerts older than escalation_minutes get upgraded
     escalation_rules = settings.get("escalation", {})
