@@ -1,17 +1,24 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { AuthGuard } from '@/components/auth-guard';
 import { useAuth } from '@/store/auth';
 import { useState } from 'react';
+
+const TimerBarWrapper = dynamic(
+  () => import('@/components/dashboard/timer-bar').then((mod) => mod.TimerBar),
+  { ssr: false, loading: () => null }
+);
 import {
   Factory, Cog, Cpu, Wrench, Calendar, Zap, BarChart3, Settings, LogOut,
-  Map, FolderTree, Package, Menu, X, Users,
+  Map, FolderTree, Package, Menu, X, Users, QrCode,
 } from 'lucide-react';
 
 const navigation = [
   { name: 'Overview', href: '/dashboard', icon: Factory },
+  { name: 'Scan', href: '/dashboard/scan', icon: QrCode },
   { name: 'Floor Plan', href: '/dashboard/floor-plan', icon: Map },
   { name: 'Assets', href: '/dashboard/assets', icon: FolderTree },
   { name: 'Machines', href: '/dashboard/machines', icon: Cog },
@@ -113,8 +120,11 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <main className="flex-1 overflow-auto pt-14 md:pt-0">
-        <div className="p-4 md:p-8">{children}</div>
+        <div className="p-4 md:p-8 pb-20">{children}</div>
       </main>
+
+      {/* Persistent timer bar — shows when a timer is active */}
+      <TimerBarWrapper />
     </div>
   );
 }

@@ -529,6 +529,100 @@ class ApiClient {
     return this.request<{ roles: { value: string; label: string; level: number }[]; assignable: string[]; current_role: string }>('/api/users/roles');
   }
 
+  // --- Work Order Events (Activity Feed) ---
+  async getWOEvents(woId: string, params?: { types?: string; limit?: number; offset?: number }) {
+    const sp = new URLSearchParams();
+    if (params?.types) sp.set('types', params.types);
+    if (params?.limit) sp.set('limit', String(params.limit));
+    if (params?.offset) sp.set('offset', String(params.offset));
+    const qs = sp.toString();
+    return this.request<any[]>(`/api/maintenance/work-orders/${woId}/events${qs ? `?${qs}` : ''}`);
+  }
+
+  async createWOEvent(woId: string, data: { event_type?: string; content?: string; mentions?: string[]; attachments?: any[] }) {
+    return this.request<any>(`/api/maintenance/work-orders/${woId}/events`, { method: 'POST', body: JSON.stringify(data) });
+  }
+
+  // --- Time Tracking ---
+  async getWOTime(woId: string) {
+    return this.request<any[]>(`/api/maintenance/work-orders/${woId}/time`);
+  }
+
+  async getWOTimeSummary(woId: string) {
+    return this.request<any>(`/api/maintenance/work-orders/${woId}/time/summary`);
+  }
+
+  async startTimer(woId: string, category: string = 'wrench') {
+    return this.request<any>(`/api/maintenance/work-orders/${woId}/time/start`, { method: 'POST', body: JSON.stringify({ category }) });
+  }
+
+  async pauseTimer(woId: string) {
+    return this.request(`/api/maintenance/work-orders/${woId}/time/pause`, { method: 'POST' });
+  }
+
+  async resumeTimer(woId: string) {
+    return this.request(`/api/maintenance/work-orders/${woId}/time/resume`, { method: 'POST' });
+  }
+
+  async stopTimer(woId: string, notes?: string) {
+    return this.request<any>(`/api/maintenance/work-orders/${woId}/time/stop`, { method: 'POST', body: JSON.stringify({ notes }) });
+  }
+
+  async getMyTimer() {
+    return this.request<any | null>('/api/maintenance/my-timer');
+  }
+
+  // --- Work Requests ---
+  async getRequests(params?: { status?: string; limit?: number; offset?: number }) {
+    const sp = new URLSearchParams();
+    if (params?.status) sp.set('status', params.status);
+    if (params?.limit) sp.set('limit', String(params.limit));
+    const qs = sp.toString();
+    return this.request<any[]>(`/api/maintenance/requests${qs ? `?${qs}` : ''}`);
+  }
+
+  async getRequestCount(status: string = 'new') {
+    return this.request<{ count: number }>(`/api/maintenance/requests/count?status=${status}`);
+  }
+
+  async approveRequest(id: string) {
+    return this.request<any>(`/api/maintenance/requests/${id}/approve`, { method: 'POST' });
+  }
+
+  async rejectRequest(id: string, reason: string) {
+    return this.request<any>(`/api/maintenance/requests/${id}/reject`, { method: 'POST', body: JSON.stringify({ reason }) });
+  }
+
+  // --- Public Request Portal (no auth) ---
+  async submitPublicRequest(tenantSlug: string, data: {
+    title: string; description?: string; machine_id?: string;
+    urgency?: string; requester_name?: string; requester_contact?: string;
+    photos?: any[];
+  }) {
+    const response = await fetch(`${API_BASE}/api/requests/${tenantSlug}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.detail || 'Failed to submit request');
+    }
+    return response.json();
+  }
+
+  async checkRequestStatus(tenantSlug: string, requestId: string) {
+    const response = await fetch(`${API_BASE}/api/requests/${tenantSlug}/${requestId}/status`);
+    if (!response.ok) throw new Error('Request not found');
+    return response.json();
+  }
+
+  async getPublicMachines(tenantSlug: string) {
+    const response = await fetch(`${API_BASE}/api/requests/${tenantSlug}/machines`);
+    if (!response.ok) throw new Error('Failed to load machines');
+    return response.json() as Promise<{ id: string; name: string; asset_tag: string | null }[]>;
+  }
+
   // --- Dashboard Preferences ---
   async getDashboardPreferences() {
     return this.request('/api/dashboard/preferences');
