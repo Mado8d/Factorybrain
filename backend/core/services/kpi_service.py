@@ -170,16 +170,17 @@ async def get_pm_compliance(db: AsyncSession, days: int = 30) -> dict:
 async def get_planned_vs_unplanned(db: AsyncSession, days: int = 30) -> dict:
     """Ratio of planned (PM-scheduled) vs unplanned (reactive) work orders."""
     since = utcnow() - timedelta(days=days)
+    category_expr = case(
+        (MaintenanceWorkOrder.trigger_type.in_(["pm-scheduled", "preventive"]), "planned"),
+        else_="unplanned",
+    )
     result = await db.execute(
         select(
-            case(
-                (MaintenanceWorkOrder.trigger_type.in_(["pm-scheduled", "preventive"]), "planned"),
-                else_="unplanned",
-            ).label("category"),
+            category_expr.label("category"),
             func.count().label("count"),
         )
         .where(MaintenanceWorkOrder.created_at >= since)
-        .group_by("category")
+        .group_by(category_expr)
     )
     rows = result.all()
     data = {"planned": 0, "unplanned": 0}
