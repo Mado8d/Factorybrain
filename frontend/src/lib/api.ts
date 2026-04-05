@@ -195,7 +195,7 @@ class ApiClient {
 
   // --- Machines ---
   async getMachines() {
-    return this.request('/api/machines');
+    return this.request('/api/machines/');
   }
 
   async getMachine(id: string) {
