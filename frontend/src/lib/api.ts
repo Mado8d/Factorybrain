@@ -4,7 +4,9 @@
  */
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-const WS_BASE = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000';
+// Derive WS_BASE from API_BASE: http→ws, https→wss
+const WS_BASE = process.env.NEXT_PUBLIC_WS_URL ||
+  API_BASE.replace(/^http/, 'ws');
 
 export interface User {
   id: string;
@@ -654,6 +656,91 @@ class ApiClient {
     if (params?.offset) sp.set('offset', String(params.offset));
     const qs = sp.toString();
     return this.request<any[]>(`/api/audit${qs ? `?${qs}` : ''}`);
+  }
+
+  // --- Shift Handover ---
+  async getHandovers(params?: { plant_id?: string; limit?: number }) {
+    const sp = new URLSearchParams();
+    if (params?.plant_id) sp.set('plant_id', params.plant_id);
+    if (params?.limit) sp.set('limit', String(params.limit));
+    const qs = sp.toString();
+    return this.request<any[]>(`/api/shift-handover${qs ? `?${qs}` : ''}`);
+  }
+  async getHandover(id: string) { return this.request<any>(`/api/shift-handover/${id}`); }
+  async createHandover(data: { shift_date: string; shift_type: string; plant_id?: string }) {
+    return this.request<any>('/api/shift-handover', { method: 'POST', body: JSON.stringify(data) });
+  }
+  async updateHandover(id: string, data: any) {
+    return this.request<any>(`/api/shift-handover/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+  }
+  async signOutgoing(id: string) { return this.request<any>(`/api/shift-handover/${id}/sign-outgoing`, { method: 'POST' }); }
+  async acknowledgeIncoming(id: string) { return this.request<any>(`/api/shift-handover/${id}/acknowledge-incoming`, { method: 'POST' }); }
+
+  // --- LOTO / Safety ---
+  async getLOTOProcedures(machineId?: string) {
+    const qs = machineId ? `?machine_id=${machineId}` : '';
+    return this.request<any[]>(`/api/safety/loto-procedures${qs}`);
+  }
+  async getLOTOProcedure(machineId: string) { return this.request<any>(`/api/safety/loto-procedures/machine/${machineId}`); }
+  async createLOTOProcedure(data: any) { return this.request<any>('/api/safety/loto-procedures', { method: 'POST', body: JSON.stringify(data) }); }
+  async createLOTOPermit(data: { work_order_id: string; procedure_id: string }) {
+    return this.request<any>('/api/safety/loto-permits', { method: 'POST', body: JSON.stringify(data) });
+  }
+  async authorizeLOTOPermit(id: string) { return this.request<any>(`/api/safety/loto-permits/${id}/authorize`, { method: 'POST' }); }
+  async lockLOTOStep(id: string, data: { step_idx: number; lock_id: string }) {
+    return this.request<any>(`/api/safety/loto-permits/${id}/lock-step`, { method: 'POST', body: JSON.stringify(data) });
+  }
+  async unlockLOTOStep(id: string, data: { step_idx: number }) {
+    return this.request<any>(`/api/safety/loto-permits/${id}/unlock-step`, { method: 'POST', body: JSON.stringify(data) });
+  }
+  async completeLOTOPermit(id: string) { return this.request<any>(`/api/safety/loto-permits/${id}/complete`, { method: 'POST' }); }
+  async getWOLOTOPermit(woId: string) { return this.request<any>(`/api/safety/loto-permits/work-order/${woId}`); }
+
+  // --- Webhooks ---
+  async getWebhooks() { return this.request<any[]>('/api/webhooks'); }
+  async createWebhook(data: { url: string; events: string[]; description?: string }) {
+    return this.request<any>('/api/webhooks', { method: 'POST', body: JSON.stringify(data) });
+  }
+  async updateWebhook(id: string, data: any) { return this.request<any>(`/api/webhooks/${id}`, { method: 'PATCH', body: JSON.stringify(data) }); }
+  async deleteWebhook(id: string) { return this.request(`/api/webhooks/${id}`, { method: 'DELETE' }); }
+  async testWebhook(id: string) { return this.request<any>(`/api/webhooks/test/${id}`, { method: 'POST' }); }
+
+  // --- Scheduling ---
+  async getSkills(userId?: string) {
+    const qs = userId ? `?user_id=${userId}` : '';
+    return this.request<any[]>(`/api/scheduling/skills${qs}`);
+  }
+  async setSkill(data: { user_id: string; skill_type: string; level: number; is_certified?: boolean; certification_expiry?: string }) {
+    return this.request<any>('/api/scheduling/skills', { method: 'POST', body: JSON.stringify(data) });
+  }
+  async deleteSkill(id: string) { return this.request(`/api/scheduling/skills/${id}`, { method: 'DELETE' }); }
+  async getMachineRequirements(machineId: string) { return this.request<any[]>(`/api/scheduling/machines/${machineId}/requirements`); }
+  async setMachineRequirement(machineId: string, data: { skill_type: string; min_level: number }) {
+    return this.request<any>(`/api/scheduling/machines/${machineId}/requirements`, { method: 'POST', body: JSON.stringify(data) });
+  }
+  async getAvailability(dateFrom: string, dateTo: string, userId?: string) {
+    const sp = new URLSearchParams({ date_from: dateFrom, date_to: dateTo });
+    if (userId) sp.set('user_id', userId);
+    return this.request<any[]>(`/api/scheduling/availability?${sp}`);
+  }
+  async setAvailability(data: { user_id: string; date: string; shift_type?: string; status: string; notes?: string }) {
+    return this.request<any>('/api/scheduling/availability', { method: 'POST', body: JSON.stringify(data) });
+  }
+  async suggestAssignment(woId: string) { return this.request<any[]>(`/api/scheduling/suggest-assignment/${woId}`); }
+  async getTeamWorkload(dateFrom: string, dateTo: string) {
+    return this.request<any[]>(`/api/scheduling/team-workload?date_from=${dateFrom}&date_to=${dateTo}`);
+  }
+
+  // --- AI (infrastructure — activate per customer) ---
+  async getAIStatus() { return this.request<any>('/api/ai/status'); }
+  async aiGenerateDescription(machineId: string, alertId?: string) {
+    return this.request<any>('/api/ai/generate-description', { method: 'POST', body: JSON.stringify({ machine_id: machineId, alert_id: alertId }) });
+  }
+  async aiAnalyzeAnomaly(machineId: string, nodeId?: string) {
+    return this.request<any>('/api/ai/analyze-anomaly', { method: 'POST', body: JSON.stringify({ machine_id: machineId, node_id: nodeId }) });
+  }
+  async aiChat(message: string, conversationId?: string, machineId?: string) {
+    return this.request<any>('/api/ai/chat', { method: 'POST', body: JSON.stringify({ message, conversation_id: conversationId, machine_id: machineId }) });
   }
 
   // --- Dashboard Preferences ---
