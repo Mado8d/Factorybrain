@@ -45,6 +45,7 @@ function AvailabilityGauge({ value, label }: { value: number; label: string }) {
 
 export default function EnergyPage() {
   const [history, setHistory] = useState<any[]>([]);
+  const [compareHistory, setCompareHistory] = useState<any[]>([]);
   const [latestTelemetry, setLatestTelemetry] = useState<Record<string, any>>({});
   const [oeeData, setOeeData] = useState<OEEData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,14 +60,24 @@ export default function EnergyPage() {
     const load = async () => {
       try {
         const spanHours = Math.round((new Date(dateRange.primary.end).getTime() - new Date(dateRange.primary.start).getTime()) / 3600000);
-        const [historyData, latestData, oee] = await Promise.all([
+        const fetches: Promise<any>[] = [
           api.getTelemetryHistory({ node_type: 'energysense', start: dateRange.primary.start, end: dateRange.primary.end }),
           api.getLatestTelemetry(),
           api.getOEE(Math.min(168, Math.max(1, spanHours))),
-        ]);
-        setHistory(historyData as any[]);
-        setLatestTelemetry(latestData as Record<string, any>);
-        setOeeData(oee as OEEData[]);
+        ];
+
+        // Fetch comparison data if a compare range is set
+        if (dateRange.compare) {
+          fetches.push(
+            api.getTelemetryHistory({ node_type: 'energysense', start: dateRange.compare.start, end: dateRange.compare.end })
+          );
+        }
+
+        const results = await Promise.all(fetches);
+        setHistory(results[0] as any[]);
+        setLatestTelemetry(results[1] as Record<string, any>);
+        setOeeData(results[2] as OEEData[]);
+        setCompareHistory(dateRange.compare ? (results[3] as any[]) : []);
       } catch (err) {
         console.error('Failed to load energy data:', err);
       } finally {
@@ -74,7 +85,7 @@ export default function EnergyPage() {
       }
     };
     load();
-  }, [dateRange.primary.start, dateRange.primary.end]);
+  }, [dateRange.primary.start, dateRange.primary.end, dateRange.compare?.start, dateRange.compare?.end]);
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-brand-600 border-r-transparent" /></div>;
 
@@ -130,8 +141,8 @@ export default function EnergyPage() {
 
       {history.length > 0 ? (
         <div className="grid grid-cols-2 gap-4">
-          <FlexibleChart data={history} chartType="area" dataKeys={[{ key: 'grid_power_w', name: 'Grid', color: '#ef4444' }, { key: 'solar_power_w', name: 'Solar', color: '#22c55e' }]} title="Grid vs Solar" />
-          <FlexibleChart data={history} chartType="area" dataKeys={[{ key: 'channel_1_w', name: 'Channel 1', color: '#3b82f6' }, { key: 'channel_2_w', name: 'Channel 2', color: '#f59e0b' }, { key: 'channel_3_w', name: 'Channel 3', color: '#10b981' }, { key: 'channel_4_w', name: 'Channel 4', color: '#8b5cf6' }]} title="Consumption by Channel" stacked />
+          <FlexibleChart data={history} compareData={compareHistory.length > 0 ? compareHistory : undefined} chartType="area" dataKeys={[{ key: 'grid_power_w', name: 'Grid', color: '#ef4444' }, { key: 'solar_power_w', name: 'Solar', color: '#22c55e' }]} title="Grid vs Solar" />
+          <FlexibleChart data={history} compareData={compareHistory.length > 0 ? compareHistory : undefined} chartType="area" dataKeys={[{ key: 'channel_1_w', name: 'Channel 1', color: '#3b82f6' }, { key: 'channel_2_w', name: 'Channel 2', color: '#f59e0b' }, { key: 'channel_3_w', name: 'Channel 3', color: '#10b981' }, { key: 'channel_4_w', name: 'Channel 4', color: '#8b5cf6' }]} title="Consumption by Channel" stacked />
         </div>
       ) : (
         <div className="text-center py-12 bg-card rounded-xl border border-border">

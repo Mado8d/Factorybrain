@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import {
   Factory, Layers, Cog, Cpu, CalendarCheck, Wrench,
   AlertTriangle, FileText, ChevronRight, Search,
+  ChevronsUpDown, Minimize2, Maximize2,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
@@ -58,7 +59,7 @@ function TreeNode({
   const router = useRouter();
   const pathname = usePathname();
   const hasChildren = node.children && node.children.length > 0;
-  const isExpanded = expanded[node.id] ?? (level < 2);
+  const isExpanded = expanded[node.id] ?? (level === 0);
   const isActive = node.href && pathname === node.href;
   const Icon = node.icon;
 
@@ -142,6 +143,24 @@ export function AssetTree() {
     setExpanded((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
+  const collapseAll = () => {
+    setExpanded({ root: true });
+  };
+
+  const expandAll = () => {
+    const all: Record<string, boolean> = { root: true };
+    const addAll = (node: TreeNodeData) => {
+      all[node.id] = true;
+      node.children?.forEach(addAll);
+    };
+    // We'll build tree first, then expand — for now just set all machine nodes
+    machines.forEach((m) => {
+      all[`m-${m.id}`] = true;
+      all[`m-${m.id}-sensors`] = true;
+    });
+    setExpanded(all);
+  };
+
   if (loading) return <div className="px-3 py-2 text-xs text-muted-foreground">Loading...</div>;
 
   // Build tree structure
@@ -204,7 +223,7 @@ export function AssetTree() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="px-3 pt-2 pb-1">
+      <div className="px-3 pt-2 pb-1 space-y-1">
         <div className="relative">
           <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
@@ -213,6 +232,22 @@ export function AssetTree() {
             placeholder="Search assets..."
             className="h-7 text-xs pl-7 bg-secondary border-0"
           />
+        </div>
+        <div className="flex gap-1">
+          <button
+            onClick={expandAll}
+            className="flex items-center gap-1 px-2 py-0.5 text-[10px] text-muted-foreground hover:text-foreground rounded hover:bg-accent transition-colors"
+            title="Expand all"
+          >
+            <Maximize2 className="h-3 w-3" /> Expand
+          </button>
+          <button
+            onClick={collapseAll}
+            className="flex items-center gap-1 px-2 py-0.5 text-[10px] text-muted-foreground hover:text-foreground rounded hover:bg-accent transition-colors"
+            title="Collapse all"
+          >
+            <Minimize2 className="h-3 w-3" /> Collapse
+          </button>
         </div>
       </div>
       <div className="flex-1 overflow-y-auto px-1 py-1" role="tree">
