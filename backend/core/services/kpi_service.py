@@ -1,13 +1,13 @@
 """KPI calculation service — MTBF, MTTR, OEE, PM compliance, planned vs unplanned."""
 
 import uuid
-from datetime import date
+from datetime import date, timedelta
 
 from sqlalchemy import case, func, select
 from sqlalchemy import text as sa_text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.models.base import timedelta, utcnow
+from core.models.base import utcnow
 from core.models.machine import Machine
 from core.models.maintenance import MaintenanceAlert, MaintenanceWorkOrder, PMOccurrence
 from core.models.time_entry import TimeEntry

@@ -2,12 +2,12 @@
 
 import random
 import uuid
-from datetime import date
+from datetime import date, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.models.base import timedelta, utcnow
+from core.models.base import utcnow
 from core.models.machine import Machine
 from core.models.production_log import ProductionLog
 from core.schemas.production import ProductionLogCreate, ProductionLogUpdate

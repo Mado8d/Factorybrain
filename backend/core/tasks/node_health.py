@@ -1,12 +1,13 @@
 """Node health checker — runs every 5 minutes via Celery beat."""
 
 import logging
+from datetime import timedelta
 
 from sqlalchemy import select
 
 from core.celery_app import celery_app
 from core.database import SyncSession
-from core.models.base import timedelta, utcnow
+from core.models.base import utcnow
 from core.models.sensor_node import SensorNode
 
 logger = logging.getLogger(__name__)

@@ -1,12 +1,12 @@
 """Preventive Maintenance Schedule service — CRUD + scheduling logic."""
 
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.models.base import timedelta, utcnow
+from core.models.base import utcnow
 from core.models.maintenance import (
     MaintenanceWorkOrder,
     PMOccurrence,

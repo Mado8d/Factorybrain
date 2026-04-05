@@ -1,12 +1,13 @@
 """Anomaly threshold checker — runs every minute via Celery beat."""
 
 import logging
+from datetime import timedelta
 
 from sqlalchemy import select, text
 
 from core.celery_app import celery_app
 from core.database import SyncSession
-from core.models.base import timedelta, utcnow
+from core.models.base import utcnow
 from core.models.maintenance import MaintenanceAlert
 from core.models.sensor_node import SensorNode
 from core.models.sensor_reading import SensorReading

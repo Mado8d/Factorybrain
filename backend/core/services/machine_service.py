@@ -1,11 +1,12 @@
 """Machine CRUD service."""
 
 import uuid
+from datetime import timedelta
 
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.models.base import timedelta, utcnow
+from core.models.base import utcnow
 from core.models.machine import Machine
 from core.models.sensor_reading import SensorReading
 from core.schemas.machine import MachineCreate, MachineUpdate
