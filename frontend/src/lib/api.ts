@@ -405,6 +405,10 @@ class ApiClient {
     return this.request(`/api/maintenance/parts/${id}`, { method: 'DELETE' });
   }
 
+  async seedDemoParts() {
+    return this.request('/api/maintenance/parts/seed-demo', { method: 'POST' });
+  }
+
   // --- PM Schedules ---
   async getPMSchedules(params?: { machine_id?: string; is_active?: boolean; trigger_type?: string }) {
     const sp = new URLSearchParams();
