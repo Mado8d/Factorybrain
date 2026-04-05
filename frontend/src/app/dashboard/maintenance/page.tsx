@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useAuth } from '@/store/auth';
 import { Plus, ArrowRight, CheckCircle, AlertTriangle, CalendarCheck, Clock, RotateCcw, ChevronLeft, ChevronRight, Camera, X } from 'lucide-react';
@@ -72,6 +73,7 @@ const severityDotColor: Record<string, string> = {
 };
 
 export default function MaintenancePage() {
+  const router = useRouter();
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin' || user?.role === 'manager';
   const [alerts, setAlerts] = useState<Alert[]>([]);
@@ -99,13 +101,6 @@ export default function MaintenancePage() {
   const [woPhotos, setWoPhotos] = useState<File[]>([]);
   const [woPhotoPreviews, setWoPhotoPreviews] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
-
-  // Edit WO state
-  const [editWo, setEditWo] = useState<WorkOrder | null>(null);
-  const [editStatus, setEditStatus] = useState('');
-  const [editWorkPerformed, setEditWorkPerformed] = useState('');
-  const [editRootCause, setEditRootCause] = useState('');
-  const [editChecklist, setEditChecklist] = useState<{ step: string; required: boolean; completed: boolean }[]>([]);
 
   // Filter state — Alerts
   const [alertStatusFilter, setAlertStatusFilter] = useState('all');
@@ -264,33 +259,6 @@ export default function MaintenancePage() {
       await loadData();
       showFeedback('Alert resolved');
     } catch { showFeedback('Failed'); }
-  };
-
-  const openEditWo = (wo: any) => {
-    setEditWo(wo);
-    setEditStatus(wo.status);
-    setEditWorkPerformed('');
-    setEditRootCause('');
-    setEditChecklist(wo.checklist || []);
-  };
-
-  const handleUpdateWo = async () => {
-    if (!editWo) return;
-    setSubmitting(true);
-    try {
-      const data: any = { status: editStatus };
-      if (editWorkPerformed.trim()) data.work_performed = editWorkPerformed.trim();
-      if (editRootCause.trim()) data.root_cause = editRootCause.trim();
-      if (editChecklist.length > 0) data.checklist = editChecklist;
-      await api.updateWorkOrder(editWo.id, data);
-      setEditWo(null);
-      await loadData();
-      showFeedback('Work order updated');
-    } catch (err: any) {
-      showFeedback(err.message || 'Failed');
-    } finally {
-      setSubmitting(false);
-    }
   };
 
   // --- Filtered & paginated data ---
@@ -558,8 +526,8 @@ export default function MaintenancePage() {
               {paginatedWorkOrders.map((wo) => (
                 <div
                   key={wo.id}
-                  className={`grid grid-cols-1 md:grid-cols-[100px_1fr_1fr_90px_100px_120px] gap-x-3 gap-y-1 items-center px-3 py-2 border-b border-border last:border-b-0 hover:bg-secondary/30 transition-colors ${isAdmin ? 'cursor-pointer' : ''}`}
-                  onClick={() => isAdmin && openEditWo(wo)}
+                  className="grid grid-cols-1 md:grid-cols-[100px_1fr_1fr_90px_100px_120px] gap-x-3 gap-y-1 items-center px-3 py-2 border-b border-border last:border-b-0 hover:bg-secondary/30 transition-colors cursor-pointer"
+                  onClick={() => router.push(`/dashboard/maintenance/${wo.id}`)}
                 >
                   {/* WO Number */}
                   <span className="text-xs font-mono text-muted-foreground">{wo.wo_number}</span>
@@ -869,75 +837,6 @@ export default function MaintenancePage() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Work Order Dialog */}
-      <Dialog open={!!editWo} onOpenChange={(open) => { if (!open) setEditWo(null); }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Work Order {editWo?.wo_number}</DialogTitle>
-            <DialogDescription>{editWo?.title}</DialogDescription>
-          </DialogHeader>
-          {editWo && (
-            <div className="space-y-4">
-              <div>
-                <Label>Status</Label>
-                <Select value={editStatus} onValueChange={setEditStatus}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="draft">Draft</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="assigned">Assigned</SelectItem>
-                    <SelectItem value="in_progress">In Progress</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {/* Checklist */}
-              {editChecklist.length > 0 && (
-                <div>
-                  <Label>Checklist ({editChecklist.filter(c => c.completed).length}/{editChecklist.length})</Label>
-                  <div className="mt-2 space-y-1.5 bg-secondary rounded-lg p-3">
-                    {editChecklist.map((item, i) => (
-                      <label key={i} className="flex items-start gap-2 cursor-pointer group">
-                        <input
-                          type="checkbox"
-                          checked={item.completed}
-                          onChange={() => {
-                            const updated = [...editChecklist];
-                            updated[i] = { ...updated[i], completed: !updated[i].completed };
-                            setEditChecklist(updated);
-                          }}
-                          className="mt-0.5 h-4 w-4 rounded border-border bg-card text-brand-600 focus:ring-brand-500"
-                        />
-                        <span className={`text-sm ${item.completed ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
-                          {item.step}
-                          {item.required && <span className="text-red-400 ml-1">*</span>}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {(editStatus === 'completed' || editStatus === 'in_progress') && (
-                <>
-                  <div>
-                    <Label>Work Performed</Label>
-                    <Textarea value={editWorkPerformed} onChange={(e) => setEditWorkPerformed(e.target.value)} rows={3} className="mt-1 font-sans" placeholder="Describe what was done..." />
-                  </div>
-                  <div>
-                    <Label>Root Cause</Label>
-                    <Input value={editRootCause} onChange={(e) => setEditRootCause(e.target.value)} placeholder="e.g. Bearing wear due to misalignment" className="mt-1" />
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-          <DialogFooter>
-            <Button onClick={handleUpdateWo} disabled={submitting}>
-              {submitting ? 'Saving...' : 'Update Work Order'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
