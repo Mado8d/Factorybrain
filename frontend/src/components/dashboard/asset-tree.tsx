@@ -89,12 +89,17 @@ function TreeNode({
         )}
         style={{ paddingLeft: `${level * 16 + 8}px` }}
         onClick={() => {
-          if (hasChildren) onToggle(node.id);
           if (node.href) router.push(node.href);
         }}
       >
         {hasChildren ? (
-          <ChevronRight className={cn('h-3.5 w-3.5 shrink-0 transition-transform', isExpanded && 'rotate-90')} />
+          <button
+            onClick={(e) => { e.stopPropagation(); onToggle(node.id); }}
+            className="p-0.5 -m-0.5 rounded hover:bg-secondary shrink-0"
+            aria-label={isExpanded ? 'Collapse' : 'Expand'}
+          >
+            <ChevronRight className={cn('h-3.5 w-3.5 transition-transform', isExpanded && 'rotate-90')} />
+          </button>
         ) : (
           <span className="w-3.5" />
         )}
