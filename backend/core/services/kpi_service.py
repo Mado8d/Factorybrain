@@ -213,7 +213,8 @@ async def get_wo_backlog(db: AsyncSession) -> dict:
     backlog = {}
     total = 0
     for row in rows:
-        age_days = (now - row.oldest).days if row.oldest else 0
+        oldest = row.oldest.replace(tzinfo=None) if row.oldest and row.oldest.tzinfo else row.oldest
+        age_days = (now - oldest).days if oldest else 0
         backlog[row.priority] = {"count": row.count, "oldest_days": age_days}
         total += row.count
 
