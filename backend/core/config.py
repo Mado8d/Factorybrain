@@ -35,6 +35,9 @@ class Settings(BaseSettings):
     minio_root_user: str = "minioadmin"
     minio_root_password: str = "minioadmin"
 
+    # AI (optional — all AI features gracefully degrade if not set)
+    anthropic_api_key: str = ""
+
     # JWT
     jwt_algorithm: str = "HS256"
     jwt_access_token_expire_minutes: int = 30

@@ -17,6 +17,11 @@ from core.api.requests import router as requests_router
 from core.api.kpis import router as kpis_router
 from core.api.failure_codes import router as failure_codes_router
 from core.api.audit import router as audit_router
+from core.api.shift import router as shift_router
+from core.api.loto import router as loto_router
+from core.api.webhooks import router as webhooks_router
+from core.api.scheduling import router as scheduling_router
+from core.ai.router import router as ai_router
 
 api_router = APIRouter()
 
@@ -36,3 +41,8 @@ api_router.include_router(requests_router, prefix="/requests", tags=["requests"]
 api_router.include_router(kpis_router, prefix="/kpis", tags=["kpis"])
 api_router.include_router(failure_codes_router, prefix="/failure-codes", tags=["failure-codes"])
 api_router.include_router(audit_router, prefix="/audit", tags=["audit"])
+api_router.include_router(shift_router, prefix="/shift-handover", tags=["shift-handover"])
+api_router.include_router(loto_router, prefix="/safety", tags=["safety"])
+api_router.include_router(webhooks_router, prefix="/webhooks", tags=["webhooks"])
+api_router.include_router(scheduling_router, prefix="/scheduling", tags=["scheduling"])
+api_router.include_router(ai_router, prefix="/ai", tags=["ai"])

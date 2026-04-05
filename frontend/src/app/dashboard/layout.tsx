@@ -14,6 +14,7 @@ const TimerBarWrapper = dynamic(
 import {
   Factory, Cog, Cpu, Wrench, Calendar, Zap, BarChart3, Settings, LogOut,
   Map, FolderTree, Package, Menu, X, Users, QrCode, Activity,
+  ArrowLeftRight, Shield, UsersRound,
 } from 'lucide-react';
 
 const navigation = [
@@ -27,6 +28,9 @@ const navigation = [
   { name: 'Scheduling', href: '/dashboard/scheduling', icon: Calendar },
   { name: 'Parts', href: '/dashboard/parts', icon: Package },
   { name: 'Energy', href: '/dashboard/energy', icon: Zap },
+  { name: 'Handover', href: '/dashboard/handover', icon: ArrowLeftRight },
+  { name: 'Safety', href: '/dashboard/safety', icon: Shield },
+  { name: 'Team', href: '/dashboard/team', icon: UsersRound },
   { name: 'Analytics', href: '/dashboard/analytics', icon: Activity },
   { name: 'Reports', href: '/dashboard/reports', icon: BarChart3 },
   { name: 'Users', href: '/dashboard/users', icon: Users, adminOnly: true },
