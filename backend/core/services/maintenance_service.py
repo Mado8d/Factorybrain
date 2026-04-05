@@ -141,7 +141,37 @@ async def update_work_order(
         if occurrence:
             await complete_occurrence(db, occurrence, wo.completed_at)
 
+    # Auto-deduct spare parts from inventory when WO is completed
+    if wo.status == "completed" and wo.parts_used:
+        await _deduct_parts(db, wo.parts_used)
+
     return wo
+
+
+async def _deduct_parts(db: AsyncSession, parts_used: dict | list) -> None:
+    """Deduct spare parts from inventory based on WO parts_used field.
+
+    Expected format: [{"part_id": "uuid", "quantity": N}] or
+                     {"part_id": quantity, ...}
+    """
+    items = []
+    if isinstance(parts_used, list):
+        items = parts_used
+    elif isinstance(parts_used, dict):
+        items = [{"part_id": k, "quantity": v} for k, v in parts_used.items()]
+
+    for item in items:
+        part_id = item.get("part_id")
+        qty = item.get("quantity", 1)
+        if not part_id or not qty:
+            continue
+        try:
+            part = await get_spare_part(db, uuid.UUID(str(part_id)))
+            if part and part.quantity_in_stock >= qty:
+                part.quantity_in_stock -= qty
+                part.updated_at = datetime.now(timezone.utc)
+        except (ValueError, TypeError):
+            continue
 
 
 # --- Service Providers ---

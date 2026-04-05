@@ -281,6 +281,17 @@ class MaintenanceWorkOrder(Base):
         UUID(as_uuid=True), ForeignKey("pm_occurrences.id"), nullable=True
     )
 
+    # Failure code tracking (set on WO close-out)
+    failure_problem_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("failure_codes.id"), nullable=True
+    )
+    failure_cause_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("failure_codes.id"), nullable=True
+    )
+    failure_action_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("failure_codes.id"), nullable=True
+    )
+
     # Relationships
     trigger_alert = relationship("MaintenanceAlert")
     machine = relationship("Machine")
@@ -288,3 +299,6 @@ class MaintenanceWorkOrder(Base):
     technician = relationship("ServiceProviderUser")
     pm_schedule = relationship("PreventiveMaintenanceSchedule")
     pm_occurrence = relationship("PMOccurrence", foreign_keys="MaintenanceWorkOrder.pm_occurrence_id")
+    failure_problem = relationship("FailureCode", foreign_keys="MaintenanceWorkOrder.failure_problem_id")
+    failure_cause = relationship("FailureCode", foreign_keys="MaintenanceWorkOrder.failure_cause_id")
+    failure_action = relationship("FailureCode", foreign_keys="MaintenanceWorkOrder.failure_action_id")

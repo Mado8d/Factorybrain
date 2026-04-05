@@ -14,6 +14,9 @@ from core.api.dashboard import router as dashboard_router
 from core.api.uploads import router as uploads_router
 from core.api.diagnostics import router as diagnostics_router
 from core.api.requests import router as requests_router
+from core.api.kpis import router as kpis_router
+from core.api.failure_codes import router as failure_codes_router
+from core.api.audit import router as audit_router
 
 api_router = APIRouter()
 
@@ -30,3 +33,6 @@ api_router.include_router(maintenance_router, prefix="/maintenance", tags=["main
 api_router.include_router(pm_router, prefix="/maintenance/pm-schedules", tags=["preventive-maintenance"])
 api_router.include_router(tenants_router, prefix="/tenants", tags=["tenants"])
 api_router.include_router(requests_router, prefix="/requests", tags=["requests"])
+api_router.include_router(kpis_router, prefix="/kpis", tags=["kpis"])
+api_router.include_router(failure_codes_router, prefix="/failure-codes", tags=["failure-codes"])
+api_router.include_router(audit_router, prefix="/audit", tags=["audit"])

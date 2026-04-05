@@ -623,6 +623,39 @@ class ApiClient {
     return response.json() as Promise<{ id: string; name: string; asset_tag: string | null }[]>;
   }
 
+  // --- KPIs ---
+  async getKPIDashboard(days: number = 30) {
+    return this.request<any>(`/api/kpis/dashboard?days=${days}`);
+  }
+
+  // --- Failure Codes ---
+  async getFailureCodes(params?: { level?: string; parent_id?: string }) {
+    const sp = new URLSearchParams();
+    if (params?.level) sp.set('level', params.level);
+    if (params?.parent_id) sp.set('parent_id', params.parent_id);
+    const qs = sp.toString();
+    return this.request<any[]>(`/api/failure-codes${qs ? `?${qs}` : ''}`);
+  }
+
+  async createFailureCode(data: { code: string; name: string; description?: string; level: string; parent_id?: string; sort_order?: number }) {
+    return this.request<any>('/api/failure-codes', { method: 'POST', body: JSON.stringify(data) });
+  }
+
+  async seedDefaultFailureCodes() {
+    return this.request('/api/failure-codes/seed-defaults', { method: 'POST' });
+  }
+
+  // --- Audit Logs ---
+  async getAuditLogs(params?: { resource_type?: string; resource_id?: string; limit?: number; offset?: number }) {
+    const sp = new URLSearchParams();
+    if (params?.resource_type) sp.set('resource_type', params.resource_type);
+    if (params?.resource_id) sp.set('resource_id', params.resource_id);
+    if (params?.limit) sp.set('limit', String(params.limit));
+    if (params?.offset) sp.set('offset', String(params.offset));
+    const qs = sp.toString();
+    return this.request<any[]>(`/api/audit${qs ? `?${qs}` : ''}`);
+  }
+
   // --- Dashboard Preferences ---
   async getDashboardPreferences() {
     return this.request('/api/dashboard/preferences');
