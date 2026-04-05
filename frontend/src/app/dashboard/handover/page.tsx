@@ -61,8 +61,10 @@ const statusConfig: Record<string, { label: string; color: string; variant: stri
 
 const shiftIcons: Record<string, React.ReactNode> = {
   Morning:   <Sun className="h-4 w-4" />,
-  Afternoon: <Sunset className="h-4 w-4" />,
+  Day:       <Sun className="h-4 w-4" />,
+  Evening:   <Sunset className="h-4 w-4" />,
   Night:     <Moon className="h-4 w-4" />,
+  Afternoon: <Sunset className="h-4 w-4" />,
 };
 
 const severityIcons: Record<string, React.ReactNode> = {
@@ -394,8 +396,10 @@ export default function ShiftHandoverPage() {
                 <Select value={newShiftType} onValueChange={setNewShiftType}>
                   <SelectTrigger className="mt-1"><SelectValue placeholder="Select shift..." /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Morning">Morning</SelectItem>
-                    <SelectItem value="Afternoon">Afternoon</SelectItem>
+                    <SelectItem value="Morning">Morning (06:00-14:00)</SelectItem>
+                    <SelectItem value="Day">Day (06:00-18:00)</SelectItem>
+                    <SelectItem value="Evening">Evening (14:00-22:00)</SelectItem>
+                    <SelectItem value="Night">Night (22:00-06:00)</SelectItem>
                     <SelectItem value="Night">Night</SelectItem>
                   </SelectContent>
                 </Select>

@@ -21,8 +21,10 @@ from core.models.work_order_event import WorkOrderEvent
 
 SHIFT_WINDOWS = {
     "morning": (time(6, 0), time(14, 0)),
-    "afternoon": (time(14, 0), time(22, 0)),
+    "evening": (time(14, 0), time(22, 0)),
     "night": (time(22, 0), time(6, 0)),  # crosses midnight
+    "day": (time(6, 0), time(18, 0)),    # 2-shift companies
+    "afternoon": (time(14, 0), time(22, 0)),  # legacy alias
 }
 
 
