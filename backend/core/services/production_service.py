@@ -2,11 +2,12 @@
 
 import random
 import uuid
-from datetime import UTC, date, datetime, timedelta
+from datetime import date
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.models.base import timedelta, utcnow
 from core.models.machine import Machine
 from core.models.production_log import ProductionLog
 from core.schemas.production import ProductionLogCreate, ProductionLogUpdate
@@ -51,7 +52,7 @@ async def create_log(db: AsyncSession, tenant_id: uuid.UUID, data: ProductionLog
 async def update_log(db: AsyncSession, log: ProductionLog, data: ProductionLogUpdate) -> ProductionLog:
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(log, field, value)
-    log.updated_at = datetime.now(UTC)
+    log.updated_at = utcnow()
     await db.flush()
     await db.refresh(log)
     return log
@@ -72,7 +73,7 @@ async def bulk_import(
     """Import multiple production logs. Returns (success_count, errors)."""
     imported = 0
     errors: list[dict] = []
-    now = datetime.now(UTC)
+    now = utcnow()
 
     for idx, data in enumerate(logs):
         try:

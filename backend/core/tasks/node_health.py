@@ -1,12 +1,12 @@
 """Node health checker — runs every 5 minutes via Celery beat."""
 
 import logging
-from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 
 from core.celery_app import celery_app
 from core.database import SyncSession
+from core.models.base import timedelta, utcnow
 from core.models.sensor_node import SensorNode
 
 logger = logging.getLogger(__name__)
@@ -17,7 +17,7 @@ NODE_OFFLINE_THRESHOLD_MINUTES = 10
 @celery_app.task(name="core.tasks.node_health.check_node_health")
 def check_node_health():
     """Mark sensor nodes as inactive if they haven't reported in 10 minutes."""
-    cutoff = datetime.now(UTC) - timedelta(minutes=NODE_OFFLINE_THRESHOLD_MINUTES)
+    cutoff = utcnow() - timedelta(minutes=NODE_OFFLINE_THRESHOLD_MINUTES)
 
     with SyncSession() as session:
         # Find active nodes that haven't been seen recently

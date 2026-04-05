@@ -1,11 +1,12 @@
 """Time tracking service — start, pause, stop, manual entry."""
 
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.models.base import utcnow
 from core.models.time_entry import TimeEntry
 from core.services.event_service import create_system_event
 
@@ -52,7 +53,7 @@ async def start_timer(
     if active:
         await pause_timer(db, tenant_id, active)
 
-    now = datetime.now(UTC)
+    now = utcnow()
     entry = TimeEntry(
         tenant_id=tenant_id,
         work_order_id=work_order_id,
@@ -85,7 +86,7 @@ async def pause_timer(
 ) -> TimeEntry:
     if entry.paused_at or entry.stopped_at:
         return entry
-    entry.paused_at = datetime.now(UTC)
+    entry.paused_at = utcnow()
     await db.flush()
     await db.refresh(entry)
     return entry
@@ -99,7 +100,7 @@ async def resume_timer(
     if not entry.paused_at or entry.stopped_at:
         return entry
     # Adjust started_at to account for pause duration
-    pause_duration = datetime.now(UTC) - entry.paused_at
+    pause_duration = utcnow() - entry.paused_at
     entry.started_at = entry.started_at + pause_duration
     entry.paused_at = None
     await db.flush()
@@ -116,7 +117,7 @@ async def stop_timer(
     if entry.stopped_at:
         return entry
 
-    now = datetime.now(UTC)
+    now = utcnow()
     effective_end = entry.paused_at if entry.paused_at else now
     entry.stopped_at = now
     entry.duration_seconds = int((effective_end - entry.started_at).total_seconds())

@@ -1,11 +1,11 @@
 """LOTO service — procedures, permits, lock/unlock steps."""
 
 import uuid
-from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.models.base import utcnow
 from core.models.loto import LOTOPermit, LOTOProcedure
 
 # --- Procedures ---
@@ -103,7 +103,7 @@ async def get_permit_for_wo(db: AsyncSession, work_order_id: uuid.UUID) -> LOTOP
 
 async def authorize_permit(db: AsyncSession, permit: LOTOPermit, authorizer_id: uuid.UUID) -> LOTOPermit:
     permit.authorized_by = authorizer_id
-    permit.authorized_at = datetime.now(UTC)
+    permit.authorized_at = utcnow()
     permit.status = "active"
     await db.flush()
     await db.refresh(permit)
@@ -120,7 +120,7 @@ async def lock_step(
     steps = list(permit.isolation_steps)  # make mutable copy
     if step_idx < 0 or step_idx >= len(steps):
         raise ValueError("Invalid step index")
-    now = datetime.now(UTC).isoformat()
+    now = utcnow().isoformat()
     steps[step_idx]["locked_by"] = str(user_id)
     steps[step_idx]["locked_at"] = now
     steps[step_idx]["lock_id"] = lock_id
@@ -129,9 +129,9 @@ async def lock_step(
 
     # Check if all locked
     if all(s.get("locked_by") for s in steps):
-        permit.all_locked_at = datetime.now(UTC)
+        permit.all_locked_at = utcnow()
         permit.status = "work_in_progress"
-        permit.work_started_at = datetime.now(UTC)
+        permit.work_started_at = utcnow()
 
     await db.flush()
     await db.refresh(permit)
@@ -147,7 +147,7 @@ async def unlock_step(
     steps = list(permit.isolation_steps)
     if step_idx < 0 or step_idx >= len(steps):
         raise ValueError("Invalid step index")
-    now = datetime.now(UTC).isoformat()
+    now = utcnow().isoformat()
     steps[step_idx]["unlocked_by"] = str(user_id)
     steps[step_idx]["unlocked_at"] = now
     steps[step_idx]["lock_id"] = None
@@ -167,8 +167,8 @@ async def complete_permit(db: AsyncSession, permit: LOTOPermit) -> LOTOPermit:
     if not all_unlocked:
         raise ValueError("All isolation steps must be unlocked before completing")
     permit.status = "completed"
-    permit.all_unlocked_at = datetime.now(UTC)
-    permit.work_completed_at = datetime.now(UTC)
+    permit.all_unlocked_at = utcnow()
+    permit.work_completed_at = utcnow()
     await db.flush()
     await db.refresh(permit)
     return permit

@@ -1,7 +1,7 @@
 """Technician scheduling service — skills, availability, smart assignment."""
 
 import uuid
-from datetime import UTC, date, datetime
+from datetime import date, datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -278,8 +278,8 @@ async def get_team_workload(
         .where(
             MaintenanceWorkOrder.tenant_id == tenant_id,
             MaintenanceWorkOrder.status.in_(["open", "in_progress", "assigned"]),
-            MaintenanceWorkOrder.created_at >= datetime.combine(date_from, datetime.min.time(), tzinfo=UTC),
-            MaintenanceWorkOrder.created_at <= datetime.combine(date_to, datetime.max.time(), tzinfo=UTC),
+            MaintenanceWorkOrder.created_at >= datetime.combine(date_from, datetime.min.time()),
+            MaintenanceWorkOrder.created_at <= datetime.combine(date_to, datetime.max.time()),
         )
         .group_by(MaintenanceWorkOrder.assigned_by, User.name)
     )

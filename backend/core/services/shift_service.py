@@ -1,11 +1,12 @@
 """Shift handover service — create, sign-off, acknowledge."""
 
 import uuid
-from datetime import UTC, date, datetime
+from datetime import date
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.models.base import utcnow
 from core.models.maintenance import MaintenanceAlert, MaintenanceWorkOrder
 from core.models.shift_handover import ShiftHandover
 
@@ -103,7 +104,7 @@ async def update_handover(db: AsyncSession, handover: ShiftHandover, data: dict)
 
 async def sign_outgoing(db: AsyncSession, handover: ShiftHandover, user_id: uuid.UUID) -> ShiftHandover:
     handover.outgoing_user_id = user_id
-    handover.outgoing_signed_at = datetime.now(UTC)
+    handover.outgoing_signed_at = utcnow()
     await db.flush()
     await db.refresh(handover)
     return handover
@@ -111,7 +112,7 @@ async def sign_outgoing(db: AsyncSession, handover: ShiftHandover, user_id: uuid
 
 async def acknowledge_incoming(db: AsyncSession, handover: ShiftHandover, user_id: uuid.UUID) -> ShiftHandover:
     handover.incoming_user_id = user_id
-    handover.incoming_acknowledged_at = datetime.now(UTC)
+    handover.incoming_acknowledged_at = utcnow()
     handover.is_locked = True
     await db.flush()
     await db.refresh(handover)

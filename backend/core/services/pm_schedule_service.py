@@ -1,11 +1,12 @@
 """Preventive Maintenance Schedule service — CRUD + scheduling logic."""
 
 import uuid
-from datetime import UTC, date, datetime, timedelta
+from datetime import date, datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.models.base import timedelta, utcnow
 from core.models.maintenance import (
     MaintenanceWorkOrder,
     PMOccurrence,
@@ -88,7 +89,7 @@ async def update_pm_schedule(
 ) -> PreventiveMaintenanceSchedule:
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(schedule, field, value)
-    schedule.updated_at = datetime.now(UTC)
+    schedule.updated_at = utcnow()
 
     # Recalculate next due if interval changed
     if data.calendar_interval_days is not None and schedule.trigger_type in ("calendar", "hybrid"):
@@ -106,7 +107,7 @@ async def update_pm_schedule(
 async def delete_pm_schedule(db: AsyncSession, schedule: PreventiveMaintenanceSchedule) -> None:
     """Soft delete — deactivate the schedule."""
     schedule.is_active = False
-    schedule.updated_at = datetime.now(UTC)
+    schedule.updated_at = utcnow()
     await db.flush()
 
 
@@ -221,7 +222,7 @@ async def complete_occurrence(
         )
         db.add(next_occ)
 
-    schedule.updated_at = datetime.now(UTC)
+    schedule.updated_at = utcnow()
     await db.flush()
     return occurrence
 
@@ -249,7 +250,7 @@ async def skip_occurrence(
             status="upcoming",
         )
         db.add(next_occ)
-        schedule.updated_at = datetime.now(UTC)
+        schedule.updated_at = utcnow()
 
     await db.flush()
     return occurrence

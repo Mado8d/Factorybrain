@@ -1,11 +1,11 @@
 """Work request service — submit, review, approve/reject requests."""
 
 import uuid
-from datetime import UTC, datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.models.base import utcnow
 from core.models.tenant import Tenant
 from core.models.work_request import WorkRequest
 from core.schemas.work_request import WorkRequestCreate
@@ -81,7 +81,7 @@ async def approve_request(
     # Update request
     request.status = "approved"
     request.reviewed_by = reviewer_id
-    request.reviewed_at = datetime.now(UTC)
+    request.reviewed_at = utcnow()
     request.work_order_id = wo.id
     await db.flush()
     await db.refresh(request)
@@ -108,7 +108,7 @@ async def reject_request(
 ) -> WorkRequest:
     request.status = "rejected"
     request.reviewed_by = reviewer_id
-    request.reviewed_at = datetime.now(UTC)
+    request.reviewed_at = utcnow()
     request.review_notes = reason
     await db.flush()
     await db.refresh(request)
@@ -123,7 +123,7 @@ async def mark_duplicate(
 ) -> WorkRequest:
     request.status = "duplicate"
     request.reviewed_by = reviewer_id
-    request.reviewed_at = datetime.now(UTC)
+    request.reviewed_at = utcnow()
     request.work_order_id = existing_wo_id
     await db.flush()
     await db.refresh(request)

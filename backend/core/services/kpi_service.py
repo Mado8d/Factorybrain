@@ -1,12 +1,13 @@
 """KPI calculation service — MTBF, MTTR, OEE, PM compliance, planned vs unplanned."""
 
 import uuid
-from datetime import UTC, date, datetime, timedelta
+from datetime import date
 
 from sqlalchemy import case, func, select
 from sqlalchemy import text as sa_text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.models.base import timedelta, utcnow
 from core.models.machine import Machine
 from core.models.maintenance import MaintenanceAlert, MaintenanceWorkOrder, PMOccurrence
 from core.models.time_entry import TimeEntry
@@ -14,7 +15,7 @@ from core.models.time_entry import TimeEntry
 
 async def get_mttr(db: AsyncSession, days: int = 30, machine_id: uuid.UUID | None = None) -> dict:
     """Mean Time To Repair — average duration from WO start to completion."""
-    since = datetime.now(UTC) - timedelta(days=days)
+    since = utcnow() - timedelta(days=days)
     query = select(
         func.avg(
             func.extract("epoch", MaintenanceWorkOrder.completed_at)
@@ -42,7 +43,7 @@ async def get_mttr(db: AsyncSession, days: int = 30, machine_id: uuid.UUID | Non
 
 async def get_mtbf(db: AsyncSession, days: int = 90, machine_id: uuid.UUID | None = None) -> dict:
     """Mean Time Between Failures — average time between failure alerts per machine."""
-    since = datetime.now(UTC) - timedelta(days=days)
+    since = utcnow() - timedelta(days=days)
     query = (
         select(
             MaintenanceAlert.machine_id,
@@ -168,7 +169,7 @@ async def get_pm_compliance(db: AsyncSession, days: int = 30) -> dict:
 
 async def get_planned_vs_unplanned(db: AsyncSession, days: int = 30) -> dict:
     """Ratio of planned (PM-scheduled) vs unplanned (reactive) work orders."""
-    since = datetime.now(UTC) - timedelta(days=days)
+    since = utcnow() - timedelta(days=days)
     result = await db.execute(
         select(
             case(
@@ -207,7 +208,7 @@ async def get_wo_backlog(db: AsyncSession) -> dict:
         .group_by(MaintenanceWorkOrder.priority)
     )
     rows = result.all()
-    now = datetime.now(UTC)
+    now = utcnow()
     backlog = {}
     total = 0
     for row in rows:
@@ -220,7 +221,7 @@ async def get_wo_backlog(db: AsyncSession) -> dict:
 
 async def get_maintenance_cost(db: AsyncSession, days: int = 30, machine_id: uuid.UUID | None = None) -> dict:
     """Total maintenance cost from work orders (labor + parts)."""
-    since = datetime.now(UTC) - timedelta(days=days)
+    since = utcnow() - timedelta(days=days)
     query = select(
         func.sum(MaintenanceWorkOrder.total_cost).label("total_cost"),
         func.sum(MaintenanceWorkOrder.labor_hours).label("total_hours"),
@@ -244,7 +245,7 @@ async def get_maintenance_cost(db: AsyncSession, days: int = 30, machine_id: uui
 
 async def get_wrench_time(db: AsyncSession, days: int = 30) -> dict:
     """Wrench time percentage — actual repair time vs total logged time."""
-    since = datetime.now(UTC) - timedelta(days=days)
+    since = utcnow() - timedelta(days=days)
     result = await db.execute(
         select(
             TimeEntry.category,

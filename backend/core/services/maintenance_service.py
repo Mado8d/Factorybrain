@@ -1,11 +1,11 @@
 """Maintenance CRUD service — alerts, work orders."""
 
 import uuid
-from datetime import UTC, datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.models.base import utcnow
 from core.models.maintenance import (
     MaintenanceAlert,
     MaintenanceWorkOrder,
@@ -50,9 +50,9 @@ async def create_alert(db: AsyncSession, tenant_id: uuid.UUID, data: AlertCreate
 async def update_alert(db: AsyncSession, alert: MaintenanceAlert, data: AlertUpdate) -> MaintenanceAlert:
     updates = data.model_dump(exclude_unset=True)
     if updates.get("status") == "acknowledged" and alert.status == "open":
-        alert.acknowledged_at = datetime.now(UTC)
+        alert.acknowledged_at = utcnow()
     if updates.get("status") == "resolved":
-        alert.resolved_at = datetime.now(UTC)
+        alert.resolved_at = utcnow()
     for field, value in updates.items():
         setattr(alert, field, value)
     await db.flush()
@@ -106,7 +106,7 @@ async def create_work_order(db: AsyncSession, tenant_id: uuid.UUID, data: WorkOr
 
 async def update_work_order(db: AsyncSession, wo: MaintenanceWorkOrder, data: WorkOrderUpdate) -> MaintenanceWorkOrder:
     updates = data.model_dump(exclude_unset=True)
-    now = datetime.now(UTC)
+    now = utcnow()
     if updates.get("status") == "in_progress" and wo.status != "in_progress":
         wo.started_at = now
     if updates.get("status") == "completed" and wo.status != "completed":
@@ -153,7 +153,7 @@ async def _deduct_parts(db: AsyncSession, parts_used: dict | list) -> None:
             part = await get_spare_part(db, uuid.UUID(str(part_id)))
             if part and part.quantity_in_stock >= qty:
                 part.quantity_in_stock -= qty
-                part.updated_at = datetime.now(UTC)
+                part.updated_at = utcnow()
         except (ValueError, TypeError):
             continue
 
@@ -208,7 +208,7 @@ async def create_spare_part(db: AsyncSession, tenant_id: uuid.UUID, data) -> Spa
 async def update_spare_part(db: AsyncSession, part: SparePart, data) -> SparePart:
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(part, field, value)
-    part.updated_at = datetime.now(UTC)
+    part.updated_at = utcnow()
     await db.flush()
     await db.refresh(part)
     return part
@@ -216,5 +216,5 @@ async def update_spare_part(db: AsyncSession, part: SparePart, data) -> SparePar
 
 async def delete_spare_part(db: AsyncSession, part: SparePart) -> None:
     part.is_active = False
-    part.updated_at = datetime.now(UTC)
+    part.updated_at = utcnow()
     await db.flush()

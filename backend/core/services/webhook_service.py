@@ -7,12 +7,12 @@ import json
 import logging
 import secrets
 import uuid
-from datetime import UTC, datetime
 
 import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.models.base import utcnow
 from core.models.webhook import WebhookDelivery, WebhookEndpoint
 
 logger = logging.getLogger(__name__)
@@ -122,8 +122,8 @@ async def deliver_webhook(
             )
         delivery.status_code = response.status_code
         delivery.response_body = response.text[:2000] if response.text else None
-        delivery.delivered_at = datetime.now(UTC)
-        endpoint.last_triggered_at = datetime.now(UTC)
+        delivery.delivered_at = utcnow()
+        endpoint.last_triggered_at = utcnow()
 
         if response.status_code >= 400:
             delivery.error = f"HTTP {response.status_code}"

@@ -1,12 +1,12 @@
 """User CRUD service — create, list, update, deactivate, password management."""
 
 import uuid
-from datetime import UTC, datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.auth.routes import hash_password, verify_password
+from core.models.base import utcnow
 from core.models.user import User
 from core.schemas.user import UserCreate, UserProfileUpdate, UserUpdate
 
@@ -81,7 +81,7 @@ async def update_user(
 
     for field, value in updates.items():
         setattr(user, field, value)
-    user.updated_at = datetime.now(UTC)
+    user.updated_at = utcnow()
     await db.flush()
     await db.refresh(user)
     return user
@@ -95,7 +95,7 @@ async def update_profile(
     updates = data.model_dump(exclude_unset=True)
     for field, value in updates.items():
         setattr(user, field, value)
-    user.updated_at = datetime.now(UTC)
+    user.updated_at = utcnow()
     await db.flush()
     await db.refresh(user)
     return user
@@ -110,7 +110,7 @@ async def change_password(
     if not verify_password(current_password, user.hashed_password):
         return False
     user.hashed_password = hash_password(new_password)
-    user.updated_at = datetime.now(UTC)
+    user.updated_at = utcnow()
     await db.flush()
     return True
 
@@ -121,13 +121,13 @@ async def reset_password(
     new_password: str,
 ) -> None:
     user.hashed_password = hash_password(new_password)
-    user.updated_at = datetime.now(UTC)
+    user.updated_at = utcnow()
     await db.flush()
 
 
 async def deactivate_user(db: AsyncSession, user: User) -> User:
     user.is_active = False
-    user.updated_at = datetime.now(UTC)
+    user.updated_at = utcnow()
     await db.flush()
     await db.refresh(user)
     return user
@@ -135,7 +135,7 @@ async def deactivate_user(db: AsyncSession, user: User) -> User:
 
 async def activate_user(db: AsyncSession, user: User) -> User:
     user.is_active = True
-    user.updated_at = datetime.now(UTC)
+    user.updated_at = utcnow()
     await db.flush()
     await db.refresh(user)
     return user

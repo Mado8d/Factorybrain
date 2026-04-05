@@ -1,12 +1,12 @@
 """Anomaly threshold checker — runs every minute via Celery beat."""
 
 import logging
-from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select, text
 
 from core.celery_app import celery_app
 from core.database import SyncSession
+from core.models.base import timedelta, utcnow
 from core.models.maintenance import MaintenanceAlert
 from core.models.sensor_node import SensorNode
 from core.models.sensor_reading import SensorReading
@@ -53,7 +53,7 @@ def _check_tenant(session, tenant: Tenant):
     warning_escalate_min = escalation_rules.get("warning_to_critical_minutes", 60)
     escalation_rules.get("auto_create_wo_on_critical", False)
 
-    escalation_cutoff = datetime.now(UTC) - timedelta(minutes=warning_escalate_min)
+    escalation_cutoff = utcnow() - timedelta(minutes=warning_escalate_min)
     stale_alerts = (
         session.execute(
             select(MaintenanceAlert)
@@ -71,13 +71,13 @@ def _check_tenant(session, tenant: Tenant):
         alert.details = {
             **(alert.details or {}),
             "escalated_from": "warning",
-            "escalated_at": datetime.now(UTC).isoformat(),
+            "escalated_at": utcnow().isoformat(),
             "escalation_reason": f"Not acknowledged within {warning_escalate_min} minutes",
         }
         logger.info(f"Escalated alert {alert.id} from warning to critical (>{warning_escalate_min}min unacknowledged)")
 
     # Get latest reading per node (within last 2 minutes)
-    since = datetime.now(UTC) - timedelta(minutes=2)
+    since = utcnow() - timedelta(minutes=2)
     readings = (
         session.execute(
             select(SensorReading)

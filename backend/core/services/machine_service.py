@@ -1,11 +1,11 @@
 """Machine CRUD service."""
 
 import uuid
-from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.models.base import timedelta, utcnow
 from core.models.machine import Machine
 from core.models.sensor_reading import SensorReading
 from core.schemas.machine import MachineCreate, MachineUpdate
@@ -32,7 +32,7 @@ async def create_machine(db: AsyncSession, tenant_id: uuid.UUID, data: MachineCr
 async def update_machine(db: AsyncSession, machine: Machine, data: MachineUpdate) -> Machine:
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(machine, field, value)
-    machine.updated_at = datetime.now(UTC)
+    machine.updated_at = utcnow()
     await db.flush()
     await db.refresh(machine)
     return machine
@@ -45,7 +45,7 @@ async def delete_machine(db: AsyncSession, machine: Machine) -> None:
 
 async def get_machine_telemetry(db: AsyncSession, machine_id: uuid.UUID, hours: int = 24) -> list:
     """Get recent telemetry for all sensor nodes attached to a machine."""
-    since = datetime.now(UTC) - timedelta(hours=hours)
+    since = utcnow() - timedelta(hours=hours)
     result = await db.execute(
         select(SensorReading)
         .join(
