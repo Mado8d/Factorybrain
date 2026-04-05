@@ -743,6 +743,73 @@ class ApiClient {
     return this.request<any>('/api/ai/chat', { method: 'POST', body: JSON.stringify({ message, conversation_id: conversationId, machine_id: machineId }) });
   }
 
+  // --- Production Data ---
+  async getProductionLogs(params?: { machine_id?: string; date_from?: string; date_to?: string; limit?: number; offset?: number }) {
+    const sp = new URLSearchParams();
+    if (params?.machine_id) sp.set('machine_id', params.machine_id);
+    if (params?.date_from) sp.set('date_from', params.date_from);
+    if (params?.date_to) sp.set('date_to', params.date_to);
+    if (params?.limit) sp.set('limit', String(params.limit));
+    if (params?.offset) sp.set('offset', String(params.offset));
+    const qs = sp.toString();
+    return this.request<any[]>(`/api/production${qs ? `?${qs}` : ''}`);
+  }
+
+  async createProductionLog(data: {
+    machine_id?: string; shift_date: string; shift_type?: string;
+    planned_units?: number; actual_units?: number; defect_units?: number;
+    planned_runtime_minutes?: number; actual_runtime_minutes?: number;
+    downtime_minutes?: number; ideal_cycle_time_seconds?: number;
+    product_type?: string; batch_number?: string; operator_name?: string; notes?: string;
+  }) {
+    return this.request<any>('/api/production', { method: 'POST', body: JSON.stringify(data) });
+  }
+
+  async updateProductionLog(id: string, data: any) {
+    return this.request<any>(`/api/production/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+  }
+
+  async deleteProductionLog(id: string) {
+    return this.request(`/api/production/${id}`, { method: 'DELETE' });
+  }
+
+  async importProductionCSV(file: File) {
+    const token = this.getToken();
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await fetch(`${API_BASE}/api/production/import-csv`, {
+      method: 'POST',
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+      body: formData,
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.detail || `Import failed: ${response.status}`);
+    }
+    return response.json();
+  }
+
+  async getProductionSummary(params?: { machine_id?: string; date_from?: string; date_to?: string }) {
+    const sp = new URLSearchParams();
+    if (params?.machine_id) sp.set('machine_id', params.machine_id);
+    if (params?.date_from) sp.set('date_from', params.date_from);
+    if (params?.date_to) sp.set('date_to', params.date_to);
+    const qs = sp.toString();
+    return this.request<any>(`/api/production/summary${qs ? `?${qs}` : ''}`);
+  }
+
+  async getProductionOEETrend(params?: { machine_id?: string; days?: number }) {
+    const sp = new URLSearchParams();
+    if (params?.machine_id) sp.set('machine_id', params.machine_id);
+    if (params?.days) sp.set('days', String(params.days));
+    const qs = sp.toString();
+    return this.request<any[]>(`/api/production/oee-trend${qs ? `?${qs}` : ''}`);
+  }
+
+  async seedProductionDemo() {
+    return this.request<any>('/api/production/seed-demo', { method: 'POST' });
+  }
+
   // --- Dashboard Preferences ---
   async getDashboardPreferences() {
     return this.request('/api/dashboard/preferences');

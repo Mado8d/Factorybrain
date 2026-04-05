@@ -14,6 +14,7 @@ from core.models.maintenance import (
     SparePart,
 )
 from core.models.plant import Plant, ProductionLine
+from core.models.production_log import ProductionLog
 from core.models.sensor_node import SensorNode
 from core.models.sensor_reading import SensorReading
 from core.models.tenant import Tenant
@@ -37,4 +38,5 @@ __all__ = [
     "ServiceProviderUser",
     "AISuggestion",
     "SparePart",
+    "ProductionLog",
 ]

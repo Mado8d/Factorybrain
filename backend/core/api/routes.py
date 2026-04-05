@@ -9,6 +9,7 @@ from core.api.diagnostics import router as diagnostics_router
 from core.api.failure_codes import router as failure_codes_router
 from core.api.kpis import router as kpis_router
 from core.api.loto import router as loto_router
+from core.api.production import router as production_router
 from core.api.requests import router as requests_router
 from core.api.scheduling import router as scheduling_router
 from core.api.shift import router as shift_router
@@ -46,3 +47,4 @@ api_router.include_router(loto_router, prefix="/safety", tags=["safety"])
 api_router.include_router(webhooks_router, prefix="/webhooks", tags=["webhooks"])
 api_router.include_router(scheduling_router, prefix="/scheduling", tags=["scheduling"])
 api_router.include_router(ai_router, prefix="/ai", tags=["ai"])
+api_router.include_router(production_router, prefix="/production", tags=["production"])
