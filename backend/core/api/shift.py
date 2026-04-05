@@ -3,7 +3,7 @@
 import uuid
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,6 +15,7 @@ router = APIRouter()
 
 
 # --- Schemas ---
+
 
 class HandoverCreate(BaseModel):
     plant_id: uuid.UUID | None = None
@@ -55,6 +56,7 @@ class HandoverResponse(BaseModel):
 
 
 # --- Routes ---
+
 
 @router.get("/", response_model=list[HandoverResponse])
 async def list_handovers(
@@ -106,9 +108,7 @@ async def update_handover(
         raise HTTPException(status_code=404, detail="Handover not found")
     if handover.is_locked:
         raise HTTPException(status_code=400, detail="Handover is locked")
-    return await shift_service.update_handover(
-        db, handover, data.model_dump(exclude_unset=True)
-    )
+    return await shift_service.update_handover(db, handover, data.model_dump(exclude_unset=True))
 
 
 @router.post("/{handover_id}/sign-outgoing", response_model=HandoverResponse)

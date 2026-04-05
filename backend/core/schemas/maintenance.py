@@ -6,8 +6,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, model_validator
 
-
 # --- Alerts ---
+
 
 class AlertCreate(BaseModel):
     machine_id: UUID
@@ -43,6 +43,7 @@ class AlertResponse(BaseModel):
 
 
 # --- Work Orders ---
+
 
 class WorkOrderCreate(BaseModel):
     machine_id: UUID
@@ -99,6 +100,7 @@ class WorkOrderResponse(BaseModel):
 
 # --- PM Schedules ---
 
+
 class PMScheduleCreate(BaseModel):
     name: str
     machine_id: UUID
@@ -136,7 +138,14 @@ class PMScheduleCreate(BaseModel):
             raise ValueError("calendar_interval_days required for calendar/hybrid triggers")
         if t in ("meter", "hybrid") and (not self.meter_interval_hours or not self.meter_source_node_id):
             raise ValueError("meter_interval_hours and meter_source_node_id required for meter/hybrid triggers")
-        if t == "condition" and not all([self.condition_sensor_field, self.condition_operator, self.condition_threshold, self.condition_node_id]):
+        if t == "condition" and not all(
+            [
+                self.condition_sensor_field,
+                self.condition_operator,
+                self.condition_threshold,
+                self.condition_node_id,
+            ]
+        ):
             raise ValueError("condition fields required for condition triggers")
         return self
 
@@ -228,6 +237,7 @@ class PMTemplateResponse(BaseModel):
 
 # --- Spare Parts ---
 
+
 class SparePartCreate(BaseModel):
     name: str
     part_number: str | None = None
@@ -277,6 +287,7 @@ class SparePartResponse(BaseModel):
 
 
 # --- Service Providers ---
+
 
 class ServiceProviderCreate(BaseModel):
     company_name: str

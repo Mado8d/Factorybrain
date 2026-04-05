@@ -5,12 +5,12 @@ from uuid import UUID
 
 from pydantic import BaseModel, field_validator
 
-
 VALID_URGENCIES = {"low", "medium", "high", "critical"}
 
 
 class WorkRequestCreate(BaseModel):
     """Public request submission — minimal fields."""
+
     title: str
     description: str | None = None
     machine_id: UUID | None = None
@@ -61,6 +61,7 @@ class WorkRequestResponse(BaseModel):
 
 class WorkRequestStatusResponse(BaseModel):
     """Public-facing status check — limited info."""
+
     id: UUID
     status: str
     title: str

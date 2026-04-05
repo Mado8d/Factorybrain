@@ -5,7 +5,6 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
-
 # --- Default tenant settings (source of truth for all thresholds) ---
 
 DEFAULT_TENANT_SETTINGS = {
@@ -29,6 +28,7 @@ DEFAULT_TENANT_SETTINGS = {
 
 
 # --- Schemas ---
+
 
 class ThresholdSettings(BaseModel):
     vibration_warning: float = 2.5

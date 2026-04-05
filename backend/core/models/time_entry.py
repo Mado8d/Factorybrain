@@ -16,6 +16,7 @@ class TimeEntry(Base):
     Supports start/pause/stop with category classification
     (wrench time, travel, waiting, admin).
     """
+
     __tablename__ = "time_entries"
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -27,9 +28,7 @@ class TimeEntry(Base):
     work_order_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("maintenance_work_orders.id"), nullable=False, index=True
     )
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True
-    )
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     started_at: Mapped[datetime] = mapped_column(nullable=False)
     paused_at: Mapped[datetime | None] = mapped_column(nullable=True)
     stopped_at: Mapped[datetime | None] = mapped_column(nullable=True)

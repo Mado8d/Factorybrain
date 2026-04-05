@@ -12,6 +12,7 @@ from core.models.base import Base
 
 class ShiftHandover(Base):
     """Digital shift handover with auto-populated data and dual sign-off."""
+
     __tablename__ = "shift_handovers"
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -20,9 +21,7 @@ class ShiftHandover(Base):
     tenant_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True
     )
-    plant_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("plants.id"), nullable=True
-    )
+    plant_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("plants.id"), nullable=True)
     shift_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
     shift_type: Mapped[str] = mapped_column(String, nullable=False)
 

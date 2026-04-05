@@ -42,9 +42,7 @@ async def list_machines(
 
 
 @router.get("/{machine_id}", response_model=MachineResponse)
-async def get_machine(
-    machine_id: uuid.UUID, user: CurrentUser, db: AsyncSession = Depends(get_db)
-):
+async def get_machine(machine_id: uuid.UUID, user: CurrentUser, db: AsyncSession = Depends(get_db)):
     """Get a specific machine."""
     await set_tenant_context(db, str(user.tenant_id))
     machine = await machine_service.get_machine(db, machine_id)
@@ -54,9 +52,7 @@ async def get_machine(
 
 
 @router.post("/", response_model=MachineResponse, status_code=201)
-async def create_machine(
-    data: MachineCreate, user: AdminUser, db: AsyncSession = Depends(get_db)
-):
+async def create_machine(data: MachineCreate, user: AdminUser, db: AsyncSession = Depends(get_db)):
     """Create a new machine (admin/manager only)."""
     await set_tenant_context(db, str(user.tenant_id))
     return await machine_service.create_machine(db, user.tenant_id, data)
@@ -78,9 +74,7 @@ async def update_machine(
 
 
 @router.delete("/{machine_id}", status_code=204)
-async def delete_machine(
-    machine_id: uuid.UUID, user: AdminUser, db: AsyncSession = Depends(get_db)
-):
+async def delete_machine(machine_id: uuid.UUID, user: AdminUser, db: AsyncSession = Depends(get_db)):
     """Delete a machine (admin/manager only)."""
     await set_tenant_context(db, str(user.tenant_id))
     machine = await machine_service.get_machine(db, machine_id)
@@ -90,9 +84,7 @@ async def delete_machine(
 
 
 @router.get("/{machine_id}/thresholds")
-async def get_machine_thresholds(
-    machine_id: uuid.UUID, user: CurrentUser, db: AsyncSession = Depends(get_db)
-):
+async def get_machine_thresholds(machine_id: uuid.UUID, user: CurrentUser, db: AsyncSession = Depends(get_db)):
     """Get effective thresholds for a machine (tenant defaults merged with machine overrides)."""
     await set_tenant_context(db, str(user.tenant_id))
     machine = await machine_service.get_machine(db, machine_id)
@@ -101,6 +93,7 @@ async def get_machine_thresholds(
 
     # Get tenant defaults
     from core.schemas.tenant import DEFAULT_TENANT_SETTINGS
+
     tenant_thresholds = DEFAULT_TENANT_SETTINGS["thresholds"].copy()
     if user.tenant and user.tenant.settings:
         tenant_thresholds.update(user.tenant.settings.get("thresholds", {}))
@@ -144,11 +137,13 @@ async def update_machine_thresholds(
             overrides[field] = value
 
     specs["thresholds"] = overrides
-    from core.schemas.machine import MachineUpdate as MU
-    await machine_service.update_machine(db, machine, MU(specifications=specs))
+    from core.schemas.machine import MachineUpdate as MachineUpdateSchema
+
+    await machine_service.update_machine(db, machine, MachineUpdateSchema(specifications=specs))
 
     # Return effective thresholds
     from core.schemas.tenant import DEFAULT_TENANT_SETTINGS
+
     tenant_thresholds = DEFAULT_TENANT_SETTINGS["thresholds"].copy()
     if user.tenant and user.tenant.settings:
         tenant_thresholds.update(user.tenant.settings.get("thresholds", {}))

@@ -252,8 +252,7 @@ async def chat(
         return _FALLBACK["error"]
 
     context_text = "\n\n---\n\n".join(
-        f"[{c.get('source_name', 'unknown')}]\n{c.get('content', '')}"
-        for c in context_chunks
+        f"[{c.get('source_name', 'unknown')}]\n{c.get('content', '')}" for c in context_chunks
     )
 
     system = CHAT_SYSTEM_PROMPT.format(
@@ -286,8 +285,7 @@ async def chat_stream(
         return
 
     context_text = "\n\n---\n\n".join(
-        f"[{c.get('source_name', 'unknown')}]\n{c.get('content', '')}"
-        for c in context_chunks
+        f"[{c.get('source_name', 'unknown')}]\n{c.get('content', '')}" for c in context_chunks
     )
 
     system = CHAT_SYSTEM_PROMPT.format(

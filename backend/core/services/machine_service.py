@@ -1,7 +1,7 @@
 """Machine CRUD service."""
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,9 +21,7 @@ async def get_machine(db: AsyncSession, machine_id: uuid.UUID) -> Machine | None
     return result.scalar_one_or_none()
 
 
-async def create_machine(
-    db: AsyncSession, tenant_id: uuid.UUID, data: MachineCreate
-) -> Machine:
+async def create_machine(db: AsyncSession, tenant_id: uuid.UUID, data: MachineCreate) -> Machine:
     machine = Machine(tenant_id=tenant_id, **data.model_dump(exclude_unset=True))
     db.add(machine)
     await db.flush()
@@ -31,12 +29,10 @@ async def create_machine(
     return machine
 
 
-async def update_machine(
-    db: AsyncSession, machine: Machine, data: MachineUpdate
-) -> Machine:
+async def update_machine(db: AsyncSession, machine: Machine, data: MachineUpdate) -> Machine:
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(machine, field, value)
-    machine.updated_at = datetime.now(timezone.utc)
+    machine.updated_at = datetime.now(UTC)
     await db.flush()
     await db.refresh(machine)
     return machine
@@ -47,11 +43,9 @@ async def delete_machine(db: AsyncSession, machine: Machine) -> None:
     await db.flush()
 
 
-async def get_machine_telemetry(
-    db: AsyncSession, machine_id: uuid.UUID, hours: int = 24
-) -> list:
+async def get_machine_telemetry(db: AsyncSession, machine_id: uuid.UUID, hours: int = 24) -> list:
     """Get recent telemetry for all sensor nodes attached to a machine."""
-    since = datetime.now(timezone.utc) - timedelta(hours=hours)
+    since = datetime.now(UTC) - timedelta(hours=hours)
     result = await db.execute(
         select(SensorReading)
         .join(
@@ -80,8 +74,7 @@ async def get_latest_telemetry_per_node(
     result = await db.execute(
         select(SensorReading).join(
             subq,
-            (SensorReading.node_id == subq.c.node_id)
-            & (SensorReading.time == subq.c.latest),
+            (SensorReading.node_id == subq.c.node_id) & (SensorReading.time == subq.c.latest),
         )
     )
     readings = result.scalars().all()

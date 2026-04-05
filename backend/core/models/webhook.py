@@ -12,6 +12,7 @@ from core.models.base import Base
 
 class WebhookEndpoint(Base):
     """Customer-configured webhook endpoint for event notifications."""
+
     __tablename__ = "webhook_endpoints"
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -33,6 +34,7 @@ class WebhookEndpoint(Base):
 
 class WebhookDelivery(Base):
     """Individual webhook delivery attempt for audit/retry."""
+
     __tablename__ = "webhook_deliveries"
 
     id: Mapped[uuid.UUID] = mapped_column(

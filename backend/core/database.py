@@ -53,8 +53,10 @@ async def set_tenant_context(session: AsyncSession, tenant_id: str) -> None:
     tenant_id is always a UUID from the authenticated user (never from user input).
     """
     import re
+
     from sqlalchemy import text
+
     # Validate UUID format to prevent injection
-    if not re.match(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', tenant_id):
+    if not re.match(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", tenant_id):
         raise ValueError(f"Invalid tenant_id format: {tenant_id}")
     await session.execute(text(f"SET LOCAL app.current_tenant = '{tenant_id}'"))

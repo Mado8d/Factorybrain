@@ -15,16 +15,12 @@ async def get_dashboard_kpis(db: AsyncSession) -> DashboardKPIs:
     total = await db.execute(select(func.count()).select_from(Machine))
     total_machines = total.scalar_one()
 
-    active = await db.execute(
-        select(func.count()).select_from(Machine).where(Machine.status == "active")
-    )
+    active = await db.execute(select(func.count()).select_from(Machine).where(Machine.status == "active"))
     active_machines = active.scalar_one()
 
     # Alert counts
     open_alerts = await db.execute(
-        select(func.count())
-        .select_from(MaintenanceAlert)
-        .where(MaintenanceAlert.status == "open")
+        select(func.count()).select_from(MaintenanceAlert).where(MaintenanceAlert.status == "open")
     )
     open_count = open_alerts.scalar_one()
 
@@ -52,8 +48,7 @@ async def get_dashboard_kpis(db: AsyncSession) -> DashboardKPIs:
             func.sum(SensorReading.solar_power_w).label("total_solar"),
         ).join(
             power_subq,
-            (SensorReading.node_id == power_subq.c.node_id)
-            & (SensorReading.time == power_subq.c.latest),
+            (SensorReading.node_id == power_subq.c.node_id) & (SensorReading.time == power_subq.c.latest),
         )
     )
     power_row = power_result.first()

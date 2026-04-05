@@ -1,13 +1,13 @@
 """Work request service — submit, review, approve/reject requests."""
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.models.work_request import WorkRequest
 from core.models.tenant import Tenant
+from core.models.work_request import WorkRequest
 from core.schemas.work_request import WorkRequestCreate
 from core.services.event_service import create_system_event
 
@@ -65,8 +65,8 @@ async def approve_request(
     reviewer_id: uuid.UUID,
 ) -> WorkRequest:
     """Approve a request and create a work order from it."""
-    from core.services.maintenance_service import create_work_order
     from core.schemas.maintenance import WorkOrderCreate
+    from core.services.maintenance_service import create_work_order
 
     # Create work order from request
     wo_data = WorkOrderCreate(
@@ -81,14 +81,17 @@ async def approve_request(
     # Update request
     request.status = "approved"
     request.reviewed_by = reviewer_id
-    request.reviewed_at = datetime.now(timezone.utc)
+    request.reviewed_at = datetime.now(UTC)
     request.work_order_id = wo.id
     await db.flush()
     await db.refresh(request)
 
     # Log event on the new work order
     await create_system_event(
-        db, request.tenant_id, wo.id, "request_note",
+        db,
+        request.tenant_id,
+        wo.id,
+        "request_note",
         f"Created from request by {request.requester_name or 'anonymous'}",
         {"request_id": str(request.id), "requester": request.requester_name},
         user_id=reviewer_id,
@@ -105,7 +108,7 @@ async def reject_request(
 ) -> WorkRequest:
     request.status = "rejected"
     request.reviewed_by = reviewer_id
-    request.reviewed_at = datetime.now(timezone.utc)
+    request.reviewed_at = datetime.now(UTC)
     request.review_notes = reason
     await db.flush()
     await db.refresh(request)
@@ -120,7 +123,7 @@ async def mark_duplicate(
 ) -> WorkRequest:
     request.status = "duplicate"
     request.reviewed_by = reviewer_id
-    request.reviewed_at = datetime.now(timezone.utc)
+    request.reviewed_at = datetime.now(UTC)
     request.work_order_id = existing_wo_id
     await db.flush()
     await db.refresh(request)

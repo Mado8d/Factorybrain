@@ -1,6 +1,6 @@
 """JWT authentication and authorization."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 from uuid import UUID
 
@@ -12,9 +12,9 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.auth.models import User
 from core.config import settings
 from core.database import get_db
-from core.auth.models import User
 
 router = APIRouter()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
@@ -60,7 +60,7 @@ def hash_password(password: str) -> str:
 
 def create_token(data: dict, expires_delta: timedelta) -> str:
     to_encode = data.copy()
-    to_encode["exp"] = datetime.now(timezone.utc) + expires_delta
+    to_encode["exp"] = datetime.now(UTC) + expires_delta
     return jwt.encode(to_encode, settings.secret_key, algorithm=settings.jwt_algorithm)
 
 
@@ -104,6 +104,7 @@ async def get_current_user(
 
     # Set tenant context for RLS
     from core.database import set_tenant_context
+
     await set_tenant_context(db, str(user.tenant_id))
 
     return user
@@ -114,6 +115,7 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
 
 def require_role(*roles: str):
     """Dependency that checks if the current user has one of the required roles."""
+
     async def check_role(user: CurrentUser) -> User:
         if user.role not in roles:
             raise HTTPException(
@@ -121,6 +123,7 @@ def require_role(*roles: str):
                 detail=f"Role '{user.role}' not authorized. Required: {roles}",
             )
         return user
+
     return check_role
 
 

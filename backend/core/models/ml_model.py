@@ -12,6 +12,7 @@ from core.models.base import Base
 
 class MLModel(Base):
     """Registry entry for a trained ML model stored in MinIO."""
+
     __tablename__ = "ml_models"
 
     id: Mapped[uuid.UUID] = mapped_column(

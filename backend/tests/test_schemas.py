@@ -1,7 +1,7 @@
 """Schema validation tests."""
 
-from core.schemas.tenant import DEFAULT_TENANT_SETTINGS, ThresholdSettings, TenantSettingsUpdate
-from core.schemas.telemetry import DashboardKPIs, WidgetConfig, DEFAULT_WIDGET_LAYOUT
+from core.schemas.telemetry import DEFAULT_WIDGET_LAYOUT, DashboardKPIs, WidgetConfig
+from core.schemas.tenant import DEFAULT_TENANT_SETTINGS, TenantSettingsUpdate, ThresholdSettings
 
 
 def test_default_tenant_settings_structure():
@@ -21,9 +21,7 @@ def test_threshold_settings_defaults():
 
 
 def test_tenant_settings_partial_update():
-    update = TenantSettingsUpdate(
-        thresholds=ThresholdSettings(vibration_warning=3.0)
-    )
+    update = TenantSettingsUpdate(thresholds=ThresholdSettings(vibration_warning=3.0))
     dumped = update.model_dump(exclude_unset=True)
     assert "thresholds" in dumped
     assert dumped["thresholds"]["vibration_warning"] == 3.0

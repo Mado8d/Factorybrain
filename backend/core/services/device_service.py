@@ -1,7 +1,6 @@
 """Sensor node CRUD service."""
 
 import uuid
-from datetime import datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,9 +19,7 @@ async def get_node(db: AsyncSession, node_id: str) -> SensorNode | None:
     return result.scalar_one_or_none()
 
 
-async def create_node(
-    db: AsyncSession, tenant_id: uuid.UUID, data: SensorNodeCreate
-) -> SensorNode:
+async def create_node(db: AsyncSession, tenant_id: uuid.UUID, data: SensorNodeCreate) -> SensorNode:
     node = SensorNode(tenant_id=tenant_id, **data.model_dump(exclude_unset=True))
     db.add(node)
     await db.flush()
@@ -30,9 +27,7 @@ async def create_node(
     return node
 
 
-async def update_node(
-    db: AsyncSession, node: SensorNode, data: SensorNodeUpdate
-) -> SensorNode:
+async def update_node(db: AsyncSession, node: SensorNode, data: SensorNodeUpdate) -> SensorNode:
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(node, field, value)
     await db.flush()
@@ -45,9 +40,7 @@ async def delete_node(db: AsyncSession, node: SensorNode) -> None:
     await db.flush()
 
 
-async def assign_to_machine(
-    db: AsyncSession, node: SensorNode, machine_id: uuid.UUID | None
-) -> SensorNode:
+async def assign_to_machine(db: AsyncSession, node: SensorNode, machine_id: uuid.UUID | None) -> SensorNode:
     node.machine_id = machine_id
     await db.flush()
     await db.refresh(node)

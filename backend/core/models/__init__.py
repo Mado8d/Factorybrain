@@ -1,23 +1,23 @@
 """SQLAlchemy models — central registry."""
 
+from core.models.ai_suggestion import AISuggestion
 from core.models.base import Base
-from core.models.tenant import Tenant
-from core.models.user import User
-from core.models.plant import Plant, ProductionLine
 from core.models.machine import Machine
-from core.models.sensor_node import SensorNode
-from core.models.sensor_reading import SensorReading
 from core.models.machine_event import MachineEvent
 from core.models.maintenance import (
     MaintenanceAlert,
     MaintenanceWorkOrder,
-    PreventiveMaintenanceSchedule,
     PMOccurrence,
-    SparePart,
+    PreventiveMaintenanceSchedule,
     ServiceProvider,
     ServiceProviderUser,
+    SparePart,
 )
-from core.models.ai_suggestion import AISuggestion
+from core.models.plant import Plant, ProductionLine
+from core.models.sensor_node import SensorNode
+from core.models.sensor_reading import SensorReading
+from core.models.tenant import Tenant
+from core.models.user import User
 
 __all__ = [
     "Base",
@@ -36,4 +36,5 @@ __all__ = [
     "PMOccurrence",
     "ServiceProviderUser",
     "AISuggestion",
+    "SparePart",
 ]

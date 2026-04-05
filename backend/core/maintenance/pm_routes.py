@@ -101,9 +101,7 @@ async def create_from_template(
 
 
 @router.get("/{schedule_id}", response_model=PMScheduleResponse)
-async def get_schedule(
-    schedule_id: uuid.UUID, user: CurrentUser, db: AsyncSession = Depends(get_db)
-):
+async def get_schedule(schedule_id: uuid.UUID, user: CurrentUser, db: AsyncSession = Depends(get_db)):
     """Get a single PM schedule."""
     await set_tenant_context(db, str(user.tenant_id))
     schedule = await pm_schedule_service.get_pm_schedule(db, schedule_id)
@@ -142,9 +140,7 @@ async def delete_schedule(
 
 
 @router.get("/{schedule_id}/occurrences", response_model=list[PMOccurrenceResponse])
-async def get_occurrences(
-    schedule_id: uuid.UUID, user: CurrentUser, db: AsyncSession = Depends(get_db)
-):
+async def get_occurrences(schedule_id: uuid.UUID, user: CurrentUser, db: AsyncSession = Depends(get_db)):
     """Get occurrence history for a PM schedule."""
     await set_tenant_context(db, str(user.tenant_id))
     return await pm_schedule_service.get_occurrences(db, schedule_id)
@@ -166,4 +162,8 @@ async def skip_occurrence(
     if occurrence.status not in ("upcoming", "due"):
         raise HTTPException(status_code=400, detail="Cannot skip a completed/already skipped occurrence")
     result = await pm_schedule_service.skip_occurrence(db, occurrence, data.reason)
-    return {"status": "skipped", "reason": data.reason, "next_due_date": str(result.schedule.next_due_date) if result.schedule else None}
+    return {
+        "status": "skipped",
+        "reason": data.reason,
+        "next_due_date": str(result.schedule.next_due_date) if result.schedule else None,
+    }

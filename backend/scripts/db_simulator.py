@@ -14,7 +14,7 @@ import math
 import os
 import random
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import psycopg2
 
@@ -97,7 +97,7 @@ def generate_energysense(node_id: str, elapsed: float, ref_time: datetime = None
 
 def insert_reading(cursor, tenant_id: str, reading: dict, ts: datetime = None):
     if ts is None:
-        ts = datetime.now(timezone.utc)
+        ts = datetime.now(UTC)
     cursor.execute(
         """
         INSERT INTO sensor_readings (
@@ -140,15 +140,17 @@ def insert_reading(cursor, tenant_id: str, reading: dict, ts: datetime = None):
 
 def run_backfill(cursor, tenant_id: str, machines: list, days: int, interval: float):
     """Generate historical data for the last N days at the given interval."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     start = now - timedelta(days=days)
     total_seconds = int(days * 86400)
     total_ticks = total_seconds // int(interval)
     readings_per_tick = len(machines) + 1  # machines + 1 EnergySense
     total_readings = total_ticks * readings_per_tick
 
-    print(f"[BACKFILL] Generating {total_readings:,} readings over {days} days "
-          f"(interval={interval}s, {total_ticks:,} ticks)")
+    print(
+        f"[BACKFILL] Generating {total_readings:,} readings over {days} days "
+        f"(interval={interval}s, {total_ticks:,} ticks)"
+    )
 
     count = 0
     elapsed = 0.0
@@ -180,15 +182,17 @@ def run_backfill(cursor, tenant_id: str, machines: list, days: int, interval: fl
 def main():
     parser = argparse.ArgumentParser(description="FactoryBrain DB Simulator")
     parser.add_argument("--mode", choices=["healthy", "degrading", "faulty"], default="healthy")
-    parser.add_argument("--interval", type=float, default=5.0,
-                        help="Seconds between readings (default: 5)")
-    parser.add_argument("--tenant-id", default=DEV_TENANT_ID,
-                        help="Tenant UUID to write data for")
-    parser.add_argument("--duration", type=float, default=0,
-                        help="Run for N minutes then exit (0 = infinite)")
-    parser.add_argument("--backfill", type=int, default=0, metavar="DAYS",
-                        help="Generate N days of historical data (30s intervals), then exit. "
-                             "Combine with --interval for live simulation after backfill.")
+    parser.add_argument("--interval", type=float, default=5.0, help="Seconds between readings (default: 5)")
+    parser.add_argument("--tenant-id", default=DEV_TENANT_ID, help="Tenant UUID to write data for")
+    parser.add_argument("--duration", type=float, default=0, help="Run for N minutes then exit (0 = infinite)")
+    parser.add_argument(
+        "--backfill",
+        type=int,
+        default=0,
+        metavar="DAYS",
+        help="Generate N days of historical data (30s intervals), then exit. "
+        "Combine with --interval for live simulation after backfill.",
+    )
     args = parser.parse_args()
 
     machines = [
@@ -222,6 +226,7 @@ def main():
         # If --backfill + --interval or --duration, continue to live sim.
         # We detect this by checking sys.argv for --interval or --duration.
         import sys
+
         has_live_args = any(a in sys.argv for a in ("--duration", "--interval"))
         if not has_live_args:
             print("[SIM] Backfill complete, exiting (pass --interval or --duration for live sim).")
@@ -261,11 +266,7 @@ def main():
 
             energy = generate_energysense("ES-001", elapsed)
             insert_reading(cursor, args.tenant_id, energy)
-            print(
-                f"  [NRG] ES-001: "
-                f"solar={energy['solar_power_w']:.0f}W "
-                f"grid={energy['grid_power_w']:.0f}W"
-            )
+            print(f"  [NRG] ES-001: solar={energy['solar_power_w']:.0f}W grid={energy['grid_power_w']:.0f}W")
 
             print(f"  --- tick {int(elapsed)}s ---")
             time.sleep(args.interval)

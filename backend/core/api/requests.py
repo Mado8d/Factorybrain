@@ -33,8 +33,9 @@ async def submit_request(
 
     # Validate machine belongs to tenant if provided
     if data.machine_id:
-        from core.services.machine_service import get_machine
         from core.database import set_tenant_context
+        from core.services.machine_service import get_machine
+
         await set_tenant_context(db, str(tenant.id))
         machine = await get_machine(db, data.machine_id)
         if not machine:
@@ -84,6 +85,7 @@ async def list_tenant_machines_public(
 
     from core.database import set_tenant_context
     from core.services.machine_service import list_machines
+
     await set_tenant_context(db, str(tenant.id))
     machines = await list_machines(db, limit=500)
     return [{"id": str(m.id), "name": m.name, "asset_tag": m.asset_tag} for m in machines]

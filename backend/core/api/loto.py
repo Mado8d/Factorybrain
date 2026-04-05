@@ -19,6 +19,7 @@ AdminOrManager = Annotated[User, Depends(require_role("admin", "manager"))]
 
 # --- Schemas ---
 
+
 class ProcedureCreate(BaseModel):
     machine_id: uuid.UUID
     name: str
@@ -93,6 +94,7 @@ class LOTOClearanceResponse(BaseModel):
 
 # --- Procedure Routes ---
 
+
 @router.get("/loto-procedures", response_model=list[ProcedureResponse])
 async def list_procedures(
     user: CurrentUser,
@@ -110,9 +112,7 @@ async def create_procedure(
     db: AsyncSession = Depends(get_db),
 ):
     await set_tenant_context(db, str(user.tenant_id))
-    return await loto_service.create_procedure(
-        db, user.tenant_id, data.model_dump(exclude_unset=True)
-    )
+    return await loto_service.create_procedure(db, user.tenant_id, data.model_dump(exclude_unset=True))
 
 
 @router.patch("/loto-procedures/{procedure_id}", response_model=ProcedureResponse)
@@ -126,9 +126,7 @@ async def update_procedure(
     procedure = await loto_service.get_procedure(db, procedure_id)
     if not procedure:
         raise HTTPException(status_code=404, detail="Procedure not found")
-    return await loto_service.update_procedure(
-        db, procedure, data.model_dump(exclude_unset=True)
-    )
+    return await loto_service.update_procedure(db, procedure, data.model_dump(exclude_unset=True))
 
 
 @router.get("/loto-procedures/machine/{machine_id}", response_model=list[ProcedureResponse])
@@ -143,6 +141,7 @@ async def get_procedures_for_machine(
 
 # --- Permit Routes ---
 
+
 @router.post("/loto-permits", response_model=PermitResponse, status_code=201)
 async def create_permit(
     data: PermitCreate,
@@ -151,9 +150,7 @@ async def create_permit(
 ):
     await set_tenant_context(db, str(user.tenant_id))
     try:
-        return await loto_service.create_permit(
-            db, user.tenant_id, data.work_order_id, data.procedure_id, user.id
-        )
+        return await loto_service.create_permit(db, user.tenant_id, data.work_order_id, data.procedure_id, user.id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

@@ -1,7 +1,7 @@
 """Preventive Maintenance Schedule service — CRUD + scheduling logic."""
 
 import uuid
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,8 +14,8 @@ from core.models.maintenance import (
 from core.schemas.maintenance import PMScheduleCreate, PMScheduleUpdate, WorkOrderCreate
 from core.services.pm_templates import get_template
 
-
 # --- CRUD ---
+
 
 async def list_pm_schedules(
     db: AsyncSession,
@@ -36,13 +36,9 @@ async def list_pm_schedules(
     return list(result.scalars().all())
 
 
-async def get_pm_schedule(
-    db: AsyncSession, schedule_id: uuid.UUID
-) -> PreventiveMaintenanceSchedule | None:
+async def get_pm_schedule(db: AsyncSession, schedule_id: uuid.UUID) -> PreventiveMaintenanceSchedule | None:
     result = await db.execute(
-        select(PreventiveMaintenanceSchedule).where(
-            PreventiveMaintenanceSchedule.id == schedule_id
-        )
+        select(PreventiveMaintenanceSchedule).where(PreventiveMaintenanceSchedule.id == schedule_id)
     )
     return result.scalar_one_or_none()
 
@@ -62,9 +58,7 @@ async def create_pm_schedule(
     # Calculate first due date
     start = data.start_date or date.today()
     if data.trigger_type in ("calendar", "hybrid"):
-        schedule.next_due_date = _calculate_next_due(
-            start, data.calendar_interval_days or 30, data.allowed_weekdays
-        )
+        schedule.next_due_date = _calculate_next_due(start, data.calendar_interval_days or 30, data.allowed_weekdays)
     if data.trigger_type in ("meter", "hybrid"):
         schedule.next_meter_due = data.meter_interval_hours
         schedule.last_meter_reading = 0.0
@@ -94,7 +88,7 @@ async def update_pm_schedule(
 ) -> PreventiveMaintenanceSchedule:
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(schedule, field, value)
-    schedule.updated_at = datetime.now(timezone.utc)
+    schedule.updated_at = datetime.now(UTC)
 
     # Recalculate next due if interval changed
     if data.calendar_interval_days is not None and schedule.trigger_type in ("calendar", "hybrid"):
@@ -109,16 +103,15 @@ async def update_pm_schedule(
     return schedule
 
 
-async def delete_pm_schedule(
-    db: AsyncSession, schedule: PreventiveMaintenanceSchedule
-) -> None:
+async def delete_pm_schedule(db: AsyncSession, schedule: PreventiveMaintenanceSchedule) -> None:
     """Soft delete — deactivate the schedule."""
     schedule.is_active = False
-    schedule.updated_at = datetime.now(timezone.utc)
+    schedule.updated_at = datetime.now(UTC)
     await db.flush()
 
 
 # --- Due Date Calculation ---
+
 
 def _calculate_next_due(
     from_date: date,
@@ -139,6 +132,7 @@ def _calculate_next_due(
 
 
 # --- Work Order Generation ---
+
 
 async def generate_wo_from_schedule(
     db: AsyncSession,
@@ -183,6 +177,7 @@ async def generate_wo_from_schedule(
 
 # --- Occurrence Management ---
 
+
 async def complete_occurrence(
     db: AsyncSession,
     occurrence: PMOccurrence,
@@ -226,7 +221,7 @@ async def complete_occurrence(
         )
         db.add(next_occ)
 
-    schedule.updated_at = datetime.now(timezone.utc)
+    schedule.updated_at = datetime.now(UTC)
     await db.flush()
     return occurrence
 
@@ -254,7 +249,7 @@ async def skip_occurrence(
             status="upcoming",
         )
         db.add(next_occ)
-        schedule.updated_at = datetime.now(timezone.utc)
+        schedule.updated_at = datetime.now(UTC)
 
     await db.flush()
     return occurrence
@@ -262,41 +257,34 @@ async def skip_occurrence(
 
 # --- Queries ---
 
+
 async def get_due_today(db: AsyncSession) -> list[PreventiveMaintenanceSchedule]:
     """Get schedules that are due today (within window)."""
     today = date.today()
     result = await db.execute(
-        select(PreventiveMaintenanceSchedule).where(
-            PreventiveMaintenanceSchedule.is_active == True,
+        select(PreventiveMaintenanceSchedule)
+        .where(
+            PreventiveMaintenanceSchedule.is_active,
             PreventiveMaintenanceSchedule.next_due_date <= today,
-        ).order_by(PreventiveMaintenanceSchedule.next_due_date.asc())
+        )
+        .order_by(PreventiveMaintenanceSchedule.next_due_date.asc())
     )
     return list(result.scalars().all())
 
 
-async def get_occurrences(
-    db: AsyncSession, schedule_id: uuid.UUID
-) -> list[PMOccurrence]:
+async def get_occurrences(db: AsyncSession, schedule_id: uuid.UUID) -> list[PMOccurrence]:
     result = await db.execute(
-        select(PMOccurrence)
-        .where(PMOccurrence.schedule_id == schedule_id)
-        .order_by(PMOccurrence.due_date.desc())
+        select(PMOccurrence).where(PMOccurrence.schedule_id == schedule_id).order_by(PMOccurrence.due_date.desc())
     )
     return list(result.scalars().all())
 
 
-async def get_occurrence(
-    db: AsyncSession, occurrence_id: uuid.UUID
-) -> PMOccurrence | None:
-    result = await db.execute(
-        select(PMOccurrence).where(PMOccurrence.id == occurrence_id)
-    )
+async def get_occurrence(db: AsyncSession, occurrence_id: uuid.UUID) -> PMOccurrence | None:
+    result = await db.execute(select(PMOccurrence).where(PMOccurrence.id == occurrence_id))
     return result.scalar_one_or_none()
 
 
-async def get_upcoming_occurrence(
-    db: AsyncSession, schedule_id: uuid.UUID
-) -> PMOccurrence | None:
+async def get_upcoming_occurrence(db: AsyncSession, schedule_id: uuid.UUID) -> PMOccurrence | None:
     """Get the most recent upcoming/due occurrence for a schedule."""
     result = await db.execute(
         select(PMOccurrence)
@@ -355,6 +343,7 @@ async def get_compliance_stats(
 
 
 # --- Template Helpers ---
+
 
 async def create_from_template(
     db: AsyncSession,

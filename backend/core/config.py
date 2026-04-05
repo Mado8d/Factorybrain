@@ -50,9 +50,7 @@ class Settings(BaseSettings):
     @property
     def sync_database_url(self) -> str:
         """Synchronous DB URL for Celery tasks (psycopg2 instead of asyncpg)."""
-        return self.database_url.replace(
-            "postgresql+asyncpg://", "postgresql+psycopg2://"
-        )
+        return self.database_url.replace("postgresql+asyncpg://", "postgresql+psycopg2://")
 
 
 settings = Settings()

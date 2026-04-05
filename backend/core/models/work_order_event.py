@@ -16,6 +16,7 @@ class WorkOrderEvent(Base):
     Captures both user actions (comments, photos) and system events
     (status changes, assignments, timer logs) in one chronological feed.
     """
+
     __tablename__ = "work_order_events"
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -25,16 +26,16 @@ class WorkOrderEvent(Base):
         UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True
     )
     work_order_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("maintenance_work_orders.id", ondelete="CASCADE"),
-        nullable=False, index=True
+        UUID(as_uuid=True),
+        ForeignKey("maintenance_work_orders.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
-    user_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
-    )
+    user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     event_type: Mapped[str] = mapped_column(
         String, nullable=False
     )  # comment, status_change, assignment, time_start, time_stop,
-       # part_used, photo, checklist_update, request_note
+    # part_used, photo, checklist_update, request_note
     content: Mapped[str | None] = mapped_column(Text, nullable=True)
     metadata_: Mapped[dict] = mapped_column("metadata", JSONB, server_default="{}")
     mentions: Mapped[list | None] = mapped_column(ARRAY(UUID(as_uuid=True)), nullable=True)

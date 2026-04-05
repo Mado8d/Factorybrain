@@ -1,7 +1,7 @@
 """Anomaly threshold checker — runs every minute via Celery beat."""
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select, text
 
@@ -42,43 +42,52 @@ def _check_tenant(session, tenant: Tenant):
 
     # Set RLS context — SET doesn't support bind params in PostgreSQL
     import re
+
     tid = str(tenant.id)
-    if not re.match(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', tid):
+    if not re.match(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", tid):
         raise ValueError(f"Invalid tenant_id: {tid}")
     session.execute(text(f"SET LOCAL app.current_tenant = '{tid}'"))
 
     # Escalation check: open alerts older than escalation_minutes get upgraded
     escalation_rules = settings.get("escalation", {})
     warning_escalate_min = escalation_rules.get("warning_to_critical_minutes", 60)
-    auto_create_wo = escalation_rules.get("auto_create_wo_on_critical", False)
+    escalation_rules.get("auto_create_wo_on_critical", False)
 
-    escalation_cutoff = datetime.now(timezone.utc) - timedelta(minutes=warning_escalate_min)
-    stale_alerts = session.execute(
-        select(MaintenanceAlert)
-        .where(MaintenanceAlert.tenant_id == tenant.id)
-        .where(MaintenanceAlert.status == "open")
-        .where(MaintenanceAlert.severity == "warning")
-        .where(MaintenanceAlert.created_at <= escalation_cutoff)
-    ).scalars().all()
+    escalation_cutoff = datetime.now(UTC) - timedelta(minutes=warning_escalate_min)
+    stale_alerts = (
+        session.execute(
+            select(MaintenanceAlert)
+            .where(MaintenanceAlert.tenant_id == tenant.id)
+            .where(MaintenanceAlert.status == "open")
+            .where(MaintenanceAlert.severity == "warning")
+            .where(MaintenanceAlert.created_at <= escalation_cutoff)
+        )
+        .scalars()
+        .all()
+    )
 
     for alert in stale_alerts:
         alert.severity = "critical"
         alert.details = {
             **(alert.details or {}),
             "escalated_from": "warning",
-            "escalated_at": datetime.now(timezone.utc).isoformat(),
+            "escalated_at": datetime.now(UTC).isoformat(),
             "escalation_reason": f"Not acknowledged within {warning_escalate_min} minutes",
         }
         logger.info(f"Escalated alert {alert.id} from warning to critical (>{warning_escalate_min}min unacknowledged)")
 
     # Get latest reading per node (within last 2 minutes)
-    since = datetime.now(timezone.utc) - timedelta(minutes=2)
-    readings = session.execute(
-        select(SensorReading)
-        .where(SensorReading.tenant_id == tenant.id)
-        .where(SensorReading.time >= since)
-        .order_by(SensorReading.time.desc())
-    ).scalars().all()
+    since = datetime.now(UTC) - timedelta(minutes=2)
+    readings = (
+        session.execute(
+            select(SensorReading)
+            .where(SensorReading.tenant_id == tenant.id)
+            .where(SensorReading.time >= since)
+            .order_by(SensorReading.time.desc())
+        )
+        .scalars()
+        .all()
+    )
 
     # Deduplicate: keep only latest per node
     seen_nodes: set[str] = set()
@@ -122,9 +131,7 @@ def _check_reading(session, tenant, reading: SensorReading, thresholds: dict):
             alerts_to_create.append(("temperature_threshold", "warning", reading.temperature_1))
 
     # Look up machine_id from sensor node
-    node = session.execute(
-        select(SensorNode).where(SensorNode.id == reading.node_id)
-    ).scalar_one_or_none()
+    node = session.execute(select(SensorNode).where(SensorNode.id == reading.node_id)).scalar_one_or_none()
 
     if not node or not node.machine_id:
         return
@@ -157,7 +164,4 @@ def _check_reading(session, tenant, reading: SensorReading, thresholds: dict):
             },
         )
         session.add(alert)
-        logger.info(
-            f"Alert created: {alert_type} ({severity}) for node {reading.node_id} "
-            f"value={value}"
-        )
+        logger.info(f"Alert created: {alert_type} ({severity}) for node {reading.node_id} value={value}")

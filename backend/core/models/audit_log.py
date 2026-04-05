@@ -12,6 +12,7 @@ from core.models.base import Base
 
 class AuditLog(Base):
     """Immutable audit trail entry. Records who did what, when, and what changed."""
+
     __tablename__ = "audit_logs"
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -20,9 +21,7 @@ class AuditLog(Base):
     tenant_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True
     )
-    user_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
-    )
+    user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     action: Mapped[str] = mapped_column(String, nullable=False)  # create, update, delete
     resource_type: Mapped[str] = mapped_column(String, nullable=False)  # work_order, machine, etc.
     resource_id: Mapped[str] = mapped_column(String, nullable=False)

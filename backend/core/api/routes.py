@@ -2,26 +2,26 @@
 
 from fastapi import APIRouter
 
+from core.ai.router import router as ai_router
+from core.api.audit import router as audit_router
+from core.api.dashboard import router as dashboard_router
+from core.api.diagnostics import router as diagnostics_router
+from core.api.failure_codes import router as failure_codes_router
+from core.api.kpis import router as kpis_router
+from core.api.loto import router as loto_router
+from core.api.requests import router as requests_router
+from core.api.scheduling import router as scheduling_router
+from core.api.shift import router as shift_router
+from core.api.uploads import router as uploads_router
+from core.api.webhooks import router as webhooks_router
 from core.auth.routes import router as auth_router
 from core.devices.routes import router as devices_router
 from core.machines.routes import router as machines_router
-from core.plants.routes import router as plants_router
-from core.maintenance.routes import router as maintenance_router
 from core.maintenance.pm_routes import router as pm_router
+from core.maintenance.routes import router as maintenance_router
+from core.plants.routes import router as plants_router
 from core.tenants.routes import router as tenants_router
 from core.users.routes import router as users_router
-from core.api.dashboard import router as dashboard_router
-from core.api.uploads import router as uploads_router
-from core.api.diagnostics import router as diagnostics_router
-from core.api.requests import router as requests_router
-from core.api.kpis import router as kpis_router
-from core.api.failure_codes import router as failure_codes_router
-from core.api.audit import router as audit_router
-from core.api.shift import router as shift_router
-from core.api.loto import router as loto_router
-from core.api.webhooks import router as webhooks_router
-from core.api.scheduling import router as scheduling_router
-from core.ai.router import router as ai_router
 
 api_router = APIRouter()
 

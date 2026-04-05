@@ -3,10 +3,9 @@
 import asyncio
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import aiomqtt
-
 from sqlalchemy import update
 
 from core.config import settings
@@ -74,8 +73,8 @@ class MQTTService:
 
         reading = SensorReading(
             time=datetime.fromtimestamp(
-                payload.get("ts", datetime.now(timezone.utc).timestamp()),
-                tz=timezone.utc,
+                payload.get("ts", datetime.now(UTC).timestamp()),
+                tz=UTC,
             ),
             tenant_id=payload.get("tenant_id"),
             node_id=payload.get("node_id"),
@@ -107,27 +106,22 @@ class MQTTService:
             # Update sensor node last_seen timestamp
             node_id = payload.get("node_id")
             if node_id:
-                await session.execute(
-                    update(SensorNode)
-                    .where(SensorNode.id == node_id)
-                    .values(last_seen=reading.time)
-                )
+                await session.execute(update(SensorNode).where(SensorNode.id == node_id).values(last_seen=reading.time))
             await session.commit()
 
         # Broadcast to WebSocket clients
         try:
             from core.api.dashboard import ws_manager
 
-            await ws_manager.broadcast({
-                "type": "telemetry",
-                "node_id": payload.get("node_id"),
-                "node_type": payload.get("node_type", "vibesense"),
-                "time": reading.time.isoformat(),
-                "data": {
-                    k: v for k, v in payload.items()
-                    if k not in ("ts", "tenant_id", "node_id", "node_type")
-                },
-            })
+            await ws_manager.broadcast(
+                {
+                    "type": "telemetry",
+                    "node_id": payload.get("node_id"),
+                    "node_type": payload.get("node_type", "vibesense"),
+                    "time": reading.time.isoformat(),
+                    "data": {k: v for k, v in payload.items() if k not in ("ts", "tenant_id", "node_id", "node_type")},
+                }
+            )
         except Exception:
             pass  # Don't let WS errors affect ingestion
 

@@ -13,17 +13,14 @@ import json
 import math
 import random
 import time
-from datetime import datetime, timezone
+from datetime import datetime
 
 import aiomqtt
-
 
 DEV_TENANT_ID = "a0000000-0000-0000-0000-000000000001"
 
 
-def generate_vibesense_reading(
-    node_id: str, machine_id: str, mode: str, elapsed_s: float
-) -> dict:
+def generate_vibesense_reading(node_id: str, machine_id: str, mode: str, elapsed_s: float) -> dict:
     """Generate a realistic vibration sensor reading."""
     t = elapsed_s
 
@@ -95,7 +92,7 @@ def generate_energysense_reading(node_id: str, elapsed_s: float) -> dict:
     solar_peak = 4200  # 4.2 kWp system
     if 6 < hour_of_day < 20:
         solar = solar_peak * math.exp(-0.5 * ((hour_of_day - 13) / 3) ** 2)
-        solar *= (0.85 + random.gauss(0, 0.1))  # Cloud variation
+        solar *= 0.85 + random.gauss(0, 0.1)  # Cloud variation
     else:
         solar = 0
 
@@ -135,7 +132,7 @@ async def run_simulator(mode: str, interval: float):
     ]
 
     print(f"[SIM] Sensor simulator started - mode: {mode}, interval: {interval}s")
-    print(f"      Publishing to MQTT at localhost:1883")
+    print("      Publishing to MQTT at localhost:1883")
     print(f"      Simulating {len(machines)} VibeSense nodes + 1 EnergySense node")
     print()
 
@@ -191,6 +188,7 @@ def main():
 
     # Windows needs SelectorEventLoop for aiomqtt compatibility
     import sys
+
     if sys.platform == "win32":
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     asyncio.run(run_simulator(args.mode, args.interval))

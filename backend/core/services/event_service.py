@@ -1,7 +1,6 @@
 """Work order event service — create events and auto-log system actions."""
 
 import uuid
-from datetime import datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession

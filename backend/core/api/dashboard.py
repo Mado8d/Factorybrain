@@ -2,7 +2,7 @@
 
 import json
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, Query, WebSocket, WebSocketDisconnect
 from sqlalchemy import select
@@ -11,8 +11,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.auth.routes import CurrentUser
 from core.config import settings
 from core.database import get_db, set_tenant_context
-from core.models.sensor_reading import SensorReading
-from core.models.user import User
 from core.schemas.telemetry import (
     DEFAULT_WIDGET_LAYOUT,
     DashboardKPIs,
@@ -25,6 +23,7 @@ router = APIRouter()
 
 
 # --- Dashboard preferences (widget layout per user) ---
+
 
 @router.get("/preferences")
 async def get_dashboard_preferences(user: CurrentUser, db: AsyncSession = Depends(get_db)):
@@ -49,6 +48,7 @@ async def update_dashboard_preferences(
 
 # --- KPIs ---
 
+
 @router.get("/kpis", response_model=DashboardKPIs)
 async def get_kpis(user: CurrentUser, db: AsyncSession = Depends(get_db)):
     """Get aggregated dashboard KPIs."""
@@ -71,9 +71,10 @@ async def get_oee(
 
     from sqlalchemy import text as sa_text
 
+    from core.models.machine import Machine
+
     # Get machine-to-node mapping
     from core.models.sensor_node import SensorNode
-    from core.models.machine import Machine
 
     nodes_result = await db.execute(
         select(SensorNode.id, SensorNode.machine_id, SensorNode.node_type)
@@ -88,13 +89,14 @@ async def get_oee(
     oee_data = []
     power_threshold = 500  # watts — below this = machine idle/off
 
-    for node_id, machine_id, node_type in energy_nodes:
+    for node_id, machine_id, _node_type in energy_nodes:
         machine = machines_map.get(machine_id)
         if not machine:
             continue
 
         # Count buckets where power > threshold vs total buckets
-        result = await db.execute(sa_text(f"""
+        result = await db.execute(
+            sa_text(f"""
             SELECT
                 COUNT(*) AS total_buckets,
                 COUNT(*) FILTER (WHERE avg_power > :threshold) AS active_buckets
@@ -106,7 +108,8 @@ async def get_oee(
                   AND time >= NOW() - INTERVAL '{hours} hours'
                 GROUP BY bucket
             ) sub
-        """).bindparams(node_id=node_id, threshold=power_threshold))
+        """).bindparams(node_id=node_id, threshold=power_threshold)
+        )
 
         row = result.first()
         if not row or row.total_buckets == 0:
@@ -114,16 +117,18 @@ async def get_oee(
 
         availability = round(row.active_buckets / row.total_buckets * 100, 1)
 
-        oee_data.append({
-            "machine_id": str(machine_id),
-            "machine_name": machine.name,
-            "asset_tag": machine.asset_tag,
-            "node_id": node_id,
-            "availability": availability,
-            "total_buckets": row.total_buckets,
-            "active_buckets": row.active_buckets,
-            "hours": hours,
-        })
+        oee_data.append(
+            {
+                "machine_id": str(machine_id),
+                "machine_name": machine.name,
+                "asset_tag": machine.asset_tag,
+                "node_id": node_id,
+                "availability": availability,
+                "total_buckets": row.total_buckets,
+                "active_buckets": row.active_buckets,
+                "hours": hours,
+            }
+        )
 
     return oee_data
 
@@ -173,7 +178,7 @@ async def get_telemetry_history(
         until = datetime.fromisoformat(end.replace("Z", "+00:00"))
     else:
         h = hours or 6
-        until = datetime.now(timezone.utc)
+        until = datetime.now(UTC)
         since = until - timedelta(hours=h)
 
     # Choose bucket interval based on time span (aim for ~200-400 points)
@@ -204,6 +209,7 @@ async def get_telemetry_history(
     # Use time_bucket for downsampling with AVG aggregation
     # Note: bucket interval is inserted directly into SQL (not user input, safe)
     from sqlalchemy import text as sa_text
+
     sql = sa_text(f"""
         SELECT
             time_bucket(INTERVAL '{bucket}', time) AS bucket_time,
@@ -263,6 +269,7 @@ async def get_telemetry_history(
 
 # --- WebSocket for live telemetry push ---
 
+
 class ConnectionManager:
     """Manages active WebSocket connections."""
 
@@ -305,7 +312,9 @@ async def websocket_telemetry(websocket: WebSocket):
         return
 
     try:
-        from jose import JWTError, jwt as jose_jwt
+        from jose import JWTError
+        from jose import jwt as jose_jwt
+
         payload = jose_jwt.decode(token, settings.secret_key, algorithms=[settings.jwt_algorithm])
         if not payload.get("sub"):
             await websocket.close(code=4001, reason="Invalid token")

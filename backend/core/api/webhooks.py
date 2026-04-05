@@ -2,13 +2,13 @@
 
 import uuid
 from datetime import datetime
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Annotated
 
-from core.auth.routes import CurrentUser, require_role
+from core.auth.routes import require_role
 from core.database import get_db, set_tenant_context
 from core.models.user import User
 from core.services import webhook_service
@@ -19,6 +19,7 @@ AdminUser = Annotated[User, Depends(require_role("admin", "manager", "superadmin
 
 
 # --- Schemas ---
+
 
 class EndpointCreate(BaseModel):
     url: str
@@ -65,6 +66,7 @@ class DeliveryResponse(BaseModel):
 
 # --- Routes ---
 
+
 @router.get("/", response_model=list[EndpointResponse])
 async def list_endpoints(
     user: AdminUser,
@@ -83,9 +85,7 @@ async def create_endpoint(
 ):
     """Create a new webhook endpoint."""
     await set_tenant_context(db, str(user.tenant_id))
-    return await webhook_service.create_endpoint(
-        db, user.tenant_id, data.url, data.events, data.description
-    )
+    return await webhook_service.create_endpoint(db, user.tenant_id, data.url, data.events, data.description)
 
 
 @router.patch("/{endpoint_id}", response_model=EndpointResponse)

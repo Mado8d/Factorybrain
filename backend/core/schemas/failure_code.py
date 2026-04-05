@@ -1,7 +1,8 @@
 """Failure code schemas."""
 
-from uuid import UUID
 from datetime import datetime
+from uuid import UUID
+
 from pydantic import BaseModel
 
 
@@ -41,6 +42,7 @@ class FailureCodeResponse(BaseModel):
 
 class WOCloseOut(BaseModel):
     """Data captured when closing a work order — failure codes + root cause."""
+
     failure_problem_id: UUID | None = None
     failure_cause_id: UUID | None = None
     failure_action_id: UUID | None = None

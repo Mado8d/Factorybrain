@@ -13,8 +13,8 @@ from core.schemas.plant import (
     ProductionLineUpdate,
 )
 
-
 # --- Plants ---
+
 
 async def list_plants(db: AsyncSession) -> list[Plant]:
     result = await db.execute(select(Plant).order_by(Plant.name))
@@ -49,18 +49,15 @@ async def delete_plant(db: AsyncSession, plant: Plant) -> None:
 
 # --- Production Lines ---
 
+
 async def list_production_lines(db: AsyncSession, plant_id: uuid.UUID) -> list[ProductionLine]:
     result = await db.execute(
-        select(ProductionLine)
-        .where(ProductionLine.plant_id == plant_id)
-        .order_by(ProductionLine.sort_order)
+        select(ProductionLine).where(ProductionLine.plant_id == plant_id).order_by(ProductionLine.sort_order)
     )
     return list(result.scalars().all())
 
 
-async def create_production_line(
-    db: AsyncSession, tenant_id: uuid.UUID, data: ProductionLineCreate
-) -> ProductionLine:
+async def create_production_line(db: AsyncSession, tenant_id: uuid.UUID, data: ProductionLineCreate) -> ProductionLine:
     line = ProductionLine(tenant_id=tenant_id, **data.model_dump(exclude_unset=True))
     db.add(line)
     await db.flush()
@@ -68,9 +65,7 @@ async def create_production_line(
     return line
 
 
-async def update_production_line(
-    db: AsyncSession, line: ProductionLine, data: ProductionLineUpdate
-) -> ProductionLine:
+async def update_production_line(db: AsyncSession, line: ProductionLine, data: ProductionLineUpdate) -> ProductionLine:
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(line, field, value)
     await db.flush()

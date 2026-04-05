@@ -1,9 +1,9 @@
 """Technician scheduling service — skills, availability, smart assignment."""
 
 import uuid
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.models.maintenance import MaintenanceWorkOrder
@@ -14,12 +14,10 @@ from core.models.technician import (
 )
 from core.models.user import User
 
-
 # --- Skills ---
 
-async def list_skills(
-    db: AsyncSession, user_id: uuid.UUID | None = None
-) -> list[TechnicianSkill]:
+
+async def list_skills(db: AsyncSession, user_id: uuid.UUID | None = None) -> list[TechnicianSkill]:
     query = select(TechnicianSkill).order_by(TechnicianSkill.created_at.desc())
     if user_id:
         query = query.where(TechnicianSkill.user_id == user_id)
@@ -28,9 +26,7 @@ async def list_skills(
 
 
 async def get_skill(db: AsyncSession, skill_id: uuid.UUID) -> TechnicianSkill | None:
-    result = await db.execute(
-        select(TechnicianSkill).where(TechnicianSkill.id == skill_id)
-    )
+    result = await db.execute(select(TechnicianSkill).where(TechnicianSkill.id == skill_id))
     return result.scalar_one_or_none()
 
 
@@ -79,9 +75,8 @@ async def delete_skill(db: AsyncSession, skill: TechnicianSkill) -> None:
 
 # --- Machine Requirements ---
 
-async def list_machine_requirements(
-    db: AsyncSession, machine_id: uuid.UUID
-) -> list[MachineSkillRequirement]:
+
+async def list_machine_requirements(db: AsyncSession, machine_id: uuid.UUID) -> list[MachineSkillRequirement]:
     result = await db.execute(
         select(MachineSkillRequirement)
         .where(MachineSkillRequirement.machine_id == machine_id)
@@ -124,16 +119,21 @@ async def set_machine_requirement(
 
 # --- Availability ---
 
+
 async def list_availability(
     db: AsyncSession,
     date_from: date,
     date_to: date,
     user_id: uuid.UUID | None = None,
 ) -> list[TechnicianAvailability]:
-    query = select(TechnicianAvailability).where(
-        TechnicianAvailability.date >= date_from,
-        TechnicianAvailability.date <= date_to,
-    ).order_by(TechnicianAvailability.date, TechnicianAvailability.user_id)
+    query = (
+        select(TechnicianAvailability)
+        .where(
+            TechnicianAvailability.date >= date_from,
+            TechnicianAvailability.date <= date_to,
+        )
+        .order_by(TechnicianAvailability.date, TechnicianAvailability.user_id)
+    )
     if user_id:
         query = query.where(TechnicianAvailability.user_id == user_id)
     result = await db.execute(query)
@@ -179,9 +179,8 @@ async def set_availability(
 
 # --- Smart assignment ---
 
-async def suggest_assignment(
-    db: AsyncSession, tenant_id: uuid.UUID, work_order: MaintenanceWorkOrder
-) -> list[dict]:
+
+async def suggest_assignment(db: AsyncSession, tenant_id: uuid.UUID, work_order: MaintenanceWorkOrder) -> list[dict]:
     """Return ranked list of technicians for a work order.
 
     Scoring weights:
@@ -209,9 +208,7 @@ async def suggest_assignment(
 
     # 3. Get all skills for these technicians
     tech_ids = [t.id for t in technicians]
-    skills_result = await db.execute(
-        select(TechnicianSkill).where(TechnicianSkill.user_id.in_(tech_ids))
-    )
+    skills_result = await db.execute(select(TechnicianSkill).where(TechnicianSkill.user_id.in_(tech_ids)))
     all_skills = list(skills_result.scalars().all())
     skills_by_user: dict[uuid.UUID, list[TechnicianSkill]] = {}
     for s in all_skills:
@@ -246,22 +243,19 @@ async def suggest_assignment(
         workload_score = 1.0 - (wl / max(max_workload, 1))
         plant_score = 1.0 if machine_plant_id and await _tech_in_plant(db, tech.id, machine_plant_id) else 0.0
 
-        total = (
-            skill_score * 0.4
-            + avail_score * 0.3
-            + workload_score * 0.2
-            + plant_score * 0.1
+        total = skill_score * 0.4 + avail_score * 0.3 + workload_score * 0.2 + plant_score * 0.1
+        ranked.append(
+            {
+                "user_id": str(tech.id),
+                "user_name": tech.name,
+                "score": round(total, 3),
+                "skill_score": round(skill_score, 3),
+                "availability_score": round(avail_score, 3),
+                "workload_score": round(workload_score, 3),
+                "plant_score": round(plant_score, 3),
+                "active_work_orders": wl,
+            }
         )
-        ranked.append({
-            "user_id": str(tech.id),
-            "user_name": tech.name,
-            "score": round(total, 3),
-            "skill_score": round(skill_score, 3),
-            "availability_score": round(avail_score, 3),
-            "workload_score": round(workload_score, 3),
-            "plant_score": round(plant_score, 3),
-            "active_work_orders": wl,
-        })
 
     ranked.sort(key=lambda x: x["score"], reverse=True)
     return ranked
@@ -284,18 +278,16 @@ async def get_team_workload(
         .where(
             MaintenanceWorkOrder.tenant_id == tenant_id,
             MaintenanceWorkOrder.status.in_(["open", "in_progress", "assigned"]),
-            MaintenanceWorkOrder.created_at >= datetime.combine(date_from, datetime.min.time(), tzinfo=timezone.utc),
-            MaintenanceWorkOrder.created_at <= datetime.combine(date_to, datetime.max.time(), tzinfo=timezone.utc),
+            MaintenanceWorkOrder.created_at >= datetime.combine(date_from, datetime.min.time(), tzinfo=UTC),
+            MaintenanceWorkOrder.created_at <= datetime.combine(date_to, datetime.max.time(), tzinfo=UTC),
         )
         .group_by(MaintenanceWorkOrder.assigned_by, User.name)
     )
-    return [
-        {"user_id": str(row[0]), "user_name": row[1], "active_work_orders": row[2]}
-        for row in result.all()
-    ]
+    return [{"user_id": str(row[0]), "user_name": row[1], "active_work_orders": row[2]} for row in result.all()]
 
 
 # --- Internal helpers ---
+
 
 async def _get_active_wo_counts(
     db: AsyncSession, tenant_id: uuid.UUID, tech_ids: list[uuid.UUID]
@@ -330,9 +322,7 @@ async def _get_machine_plant_id(db: AsyncSession, machine_id: uuid.UUID) -> uuid
     return row
 
 
-async def _tech_in_plant(
-    db: AsyncSession, user_id: uuid.UUID, plant_id: uuid.UUID
-) -> bool:
+async def _tech_in_plant(db: AsyncSession, user_id: uuid.UUID, plant_id: uuid.UUID) -> bool:
     """Check if technician has any skills/availability linked to the same tenant plant.
 
     Simple heuristic: check if the user has a TechnicianAvailability record at all,
@@ -343,9 +333,7 @@ async def _tech_in_plant(
     return True
 
 
-def _calc_skill_score(
-    requirements: dict[str, int], user_skills: list[TechnicianSkill]
-) -> float:
+def _calc_skill_score(requirements: dict[str, int], user_skills: list[TechnicianSkill]) -> float:
     """Score 0-1 based on how well technician skills match machine requirements."""
     if not requirements:
         return 1.0  # No requirements = everyone qualifies

@@ -1,34 +1,30 @@
 """KPI calculation service — MTBF, MTTR, OEE, PM compliance, planned vs unplanned."""
 
 import uuid
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 
-from sqlalchemy import case, func, select, text as sa_text
+from sqlalchemy import case, func, select
+from sqlalchemy import text as sa_text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.models.machine import Machine
 from core.models.maintenance import MaintenanceAlert, MaintenanceWorkOrder, PMOccurrence
 from core.models.time_entry import TimeEntry
-from core.models.machine import Machine
 
 
-async def get_mttr(
-    db: AsyncSession, days: int = 30, machine_id: uuid.UUID | None = None
-) -> dict:
+async def get_mttr(db: AsyncSession, days: int = 30, machine_id: uuid.UUID | None = None) -> dict:
     """Mean Time To Repair — average duration from WO start to completion."""
-    since = datetime.now(timezone.utc) - timedelta(days=days)
-    query = (
-        select(
-            func.avg(
-                func.extract("epoch", MaintenanceWorkOrder.completed_at)
-                - func.extract("epoch", MaintenanceWorkOrder.started_at)
-            ).label("avg_seconds"),
-            func.count().label("count"),
-        )
-        .where(
-            MaintenanceWorkOrder.completed_at.isnot(None),
-            MaintenanceWorkOrder.started_at.isnot(None),
-            MaintenanceWorkOrder.completed_at >= since,
-        )
+    since = datetime.now(UTC) - timedelta(days=days)
+    query = select(
+        func.avg(
+            func.extract("epoch", MaintenanceWorkOrder.completed_at)
+            - func.extract("epoch", MaintenanceWorkOrder.started_at)
+        ).label("avg_seconds"),
+        func.count().label("count"),
+    ).where(
+        MaintenanceWorkOrder.completed_at.isnot(None),
+        MaintenanceWorkOrder.started_at.isnot(None),
+        MaintenanceWorkOrder.completed_at >= since,
     )
     if machine_id:
         query = query.where(MaintenanceWorkOrder.machine_id == machine_id)
@@ -44,17 +40,13 @@ async def get_mttr(
     }
 
 
-async def get_mtbf(
-    db: AsyncSession, days: int = 90, machine_id: uuid.UUID | None = None
-) -> dict:
+async def get_mtbf(db: AsyncSession, days: int = 90, machine_id: uuid.UUID | None = None) -> dict:
     """Mean Time Between Failures — average time between failure alerts per machine."""
-    since = datetime.now(timezone.utc) - timedelta(days=days)
+    since = datetime.now(UTC) - timedelta(days=days)
     query = (
         select(
             MaintenanceAlert.machine_id,
-            func.array_agg(
-                MaintenanceAlert.created_at
-            ).label("failure_times"),
+            func.array_agg(MaintenanceAlert.created_at).label("failure_times"),
         )
         .where(
             MaintenanceAlert.severity.in_(["critical", "high"]),
@@ -86,9 +78,7 @@ async def get_mtbf(
     }
 
 
-async def get_oee_full(
-    db: AsyncSession, hours: int = 24
-) -> list[dict]:
+async def get_oee_full(db: AsyncSession, hours: int = 24) -> list[dict]:
     """Full OEE calculation per machine — Availability from energy data."""
     # Reuse existing OEE logic from dashboard
     from core.models.sensor_node import SensorNode
@@ -111,7 +101,8 @@ async def get_oee_full(
         if not machine:
             continue
 
-        result = await db.execute(sa_text(f"""
+        result = await db.execute(
+            sa_text(f"""
             SELECT
                 COUNT(*) AS total_buckets,
                 COUNT(*) FILTER (WHERE avg_power > :threshold) AS active_buckets
@@ -123,28 +114,29 @@ async def get_oee_full(
                   AND time >= NOW() - INTERVAL '{hours} hours'
                 GROUP BY bucket
             ) sub
-        """).bindparams(node_id=node_id, threshold=power_threshold))
+        """).bindparams(node_id=node_id, threshold=power_threshold)
+        )
 
         row = result.first()
         if not row or row.total_buckets == 0:
             continue
 
         availability = round(row.active_buckets / row.total_buckets * 100, 1)
-        oee_data.append({
-            "machine_id": str(machine_id),
-            "machine_name": machine.name,
-            "availability": availability,
-            "performance": None,  # Phase 3: requires production rate data
-            "quality": None,     # Phase 3: requires defect rate data
-            "oee": availability,  # For now, OEE = availability only
-        })
+        oee_data.append(
+            {
+                "machine_id": str(machine_id),
+                "machine_name": machine.name,
+                "availability": availability,
+                "performance": None,  # Phase 3: requires production rate data
+                "quality": None,  # Phase 3: requires defect rate data
+                "oee": availability,  # For now, OEE = availability only
+            }
+        )
 
     return oee_data
 
 
-async def get_pm_compliance(
-    db: AsyncSession, days: int = 30
-) -> dict:
+async def get_pm_compliance(db: AsyncSession, days: int = 30) -> dict:
     """PM compliance — on-time vs late vs missed."""
     since = date.today() - timedelta(days=days)
     result = await db.execute(
@@ -174,11 +166,9 @@ async def get_pm_compliance(
     }
 
 
-async def get_planned_vs_unplanned(
-    db: AsyncSession, days: int = 30
-) -> dict:
+async def get_planned_vs_unplanned(db: AsyncSession, days: int = 30) -> dict:
     """Ratio of planned (PM-scheduled) vs unplanned (reactive) work orders."""
-    since = datetime.now(timezone.utc) - timedelta(days=days)
+    since = datetime.now(UTC) - timedelta(days=days)
     result = await db.execute(
         select(
             case(
@@ -217,7 +207,7 @@ async def get_wo_backlog(db: AsyncSession) -> dict:
         .group_by(MaintenanceWorkOrder.priority)
     )
     rows = result.all()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     backlog = {}
     total = 0
     for row in rows:
@@ -228,21 +218,16 @@ async def get_wo_backlog(db: AsyncSession) -> dict:
     return {"total": total, "by_priority": backlog}
 
 
-async def get_maintenance_cost(
-    db: AsyncSession, days: int = 30, machine_id: uuid.UUID | None = None
-) -> dict:
+async def get_maintenance_cost(db: AsyncSession, days: int = 30, machine_id: uuid.UUID | None = None) -> dict:
     """Total maintenance cost from work orders (labor + parts)."""
-    since = datetime.now(timezone.utc) - timedelta(days=days)
-    query = (
-        select(
-            func.sum(MaintenanceWorkOrder.total_cost).label("total_cost"),
-            func.sum(MaintenanceWorkOrder.labor_hours).label("total_hours"),
-            func.count().label("wo_count"),
-        )
-        .where(
-            MaintenanceWorkOrder.completed_at.isnot(None),
-            MaintenanceWorkOrder.completed_at >= since,
-        )
+    since = datetime.now(UTC) - timedelta(days=days)
+    query = select(
+        func.sum(MaintenanceWorkOrder.total_cost).label("total_cost"),
+        func.sum(MaintenanceWorkOrder.labor_hours).label("total_hours"),
+        func.count().label("wo_count"),
+    ).where(
+        MaintenanceWorkOrder.completed_at.isnot(None),
+        MaintenanceWorkOrder.completed_at >= since,
     )
     if machine_id:
         query = query.where(MaintenanceWorkOrder.machine_id == machine_id)
@@ -259,7 +244,7 @@ async def get_maintenance_cost(
 
 async def get_wrench_time(db: AsyncSession, days: int = 30) -> dict:
     """Wrench time percentage — actual repair time vs total logged time."""
-    since = datetime.now(timezone.utc) - timedelta(days=days)
+    since = datetime.now(UTC) - timedelta(days=days)
     result = await db.execute(
         select(
             TimeEntry.category,
@@ -289,9 +274,7 @@ async def get_wrench_time(db: AsyncSession, days: int = 30) -> dict:
     }
 
 
-async def get_full_kpi_dashboard(
-    db: AsyncSession, days: int = 30
-) -> dict:
+async def get_full_kpi_dashboard(db: AsyncSession, days: int = 30) -> dict:
     """Aggregate all KPIs into one response."""
     mttr = await get_mttr(db, days)
     mtbf = await get_mtbf(db, days * 3)  # MTBF needs longer window

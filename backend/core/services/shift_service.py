@@ -1,7 +1,7 @@
 """Shift handover service — create, sign-off, acknowledge."""
 
 import uuid
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,12 +24,8 @@ async def list_handovers(
     return list(result.scalars().all())
 
 
-async def get_handover(
-    db: AsyncSession, handover_id: uuid.UUID
-) -> ShiftHandover | None:
-    result = await db.execute(
-        select(ShiftHandover).where(ShiftHandover.id == handover_id)
-    )
+async def get_handover(db: AsyncSession, handover_id: uuid.UUID) -> ShiftHandover | None:
+    result = await db.execute(select(ShiftHandover).where(ShiftHandover.id == handover_id))
     return result.scalar_one_or_none()
 
 
@@ -37,9 +33,7 @@ async def auto_populate(db: AsyncSession, tenant_id: uuid.UUID) -> dict:
     """Query active WOs and open alerts to build snapshot data."""
     # Active work orders
     wo_result = await db.execute(
-        select(MaintenanceWorkOrder).where(
-            MaintenanceWorkOrder.status.in_(["open", "in_progress"])
-        )
+        select(MaintenanceWorkOrder).where(MaintenanceWorkOrder.status.in_(["open", "in_progress"]))
     )
     work_orders = wo_result.scalars().all()
     wo_snapshot = [
@@ -54,9 +48,7 @@ async def auto_populate(db: AsyncSession, tenant_id: uuid.UUID) -> dict:
     ]
 
     # Open alerts
-    alert_result = await db.execute(
-        select(MaintenanceAlert).where(MaintenanceAlert.status == "open")
-    )
+    alert_result = await db.execute(select(MaintenanceAlert).where(MaintenanceAlert.status == "open"))
     alerts = alert_result.scalars().all()
     alert_snapshot = [
         {
@@ -99,9 +91,7 @@ async def create_handover(
     return handover
 
 
-async def update_handover(
-    db: AsyncSession, handover: ShiftHandover, data: dict
-) -> ShiftHandover:
+async def update_handover(db: AsyncSession, handover: ShiftHandover, data: dict) -> ShiftHandover:
     allowed = {"events", "open_items", "safety_notes", "production_notes"}
     for field, value in data.items():
         if field in allowed:
@@ -111,21 +101,17 @@ async def update_handover(
     return handover
 
 
-async def sign_outgoing(
-    db: AsyncSession, handover: ShiftHandover, user_id: uuid.UUID
-) -> ShiftHandover:
+async def sign_outgoing(db: AsyncSession, handover: ShiftHandover, user_id: uuid.UUID) -> ShiftHandover:
     handover.outgoing_user_id = user_id
-    handover.outgoing_signed_at = datetime.now(timezone.utc)
+    handover.outgoing_signed_at = datetime.now(UTC)
     await db.flush()
     await db.refresh(handover)
     return handover
 
 
-async def acknowledge_incoming(
-    db: AsyncSession, handover: ShiftHandover, user_id: uuid.UUID
-) -> ShiftHandover:
+async def acknowledge_incoming(db: AsyncSession, handover: ShiftHandover, user_id: uuid.UUID) -> ShiftHandover:
     handover.incoming_user_id = user_id
-    handover.incoming_acknowledged_at = datetime.now(timezone.utc)
+    handover.incoming_acknowledged_at = datetime.now(UTC)
     handover.is_locked = True
     await db.flush()
     await db.refresh(handover)

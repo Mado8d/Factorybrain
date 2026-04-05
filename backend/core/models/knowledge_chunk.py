@@ -16,6 +16,7 @@ class KnowledgeChunk(Base):
     Used by the RAG pipeline: upload manual → chunk → embed → search.
     Requires pgvector extension enabled in PostgreSQL.
     """
+
     __tablename__ = "knowledge_chunks"
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -28,9 +29,7 @@ class KnowledgeChunk(Base):
     # 'manual', 'work_order', 'procedure', 'specification'
     source_id: Mapped[str | None] = mapped_column(String, nullable=True)
     source_name: Mapped[str | None] = mapped_column(String, nullable=True)
-    machine_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("machines.id"), nullable=True
-    )
+    machine_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("machines.id"), nullable=True)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     # Note: embedding column is vector(1024) — added via raw SQL migration
     # since SQLAlchemy doesn't natively support pgvector column type

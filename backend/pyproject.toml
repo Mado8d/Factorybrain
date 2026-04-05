@@ -60,10 +60,11 @@ build-backend = "setuptools.build_meta"
 
 [tool.ruff]
 target-version = "py312"
-line-length = 100
+line-length = 120
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "UP", "B"]
+ignore = ["B008", "B904", "B905", "E501"]  # B008: FastAPI Depends, E501: long strings in prompts/templates
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

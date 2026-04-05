@@ -9,7 +9,7 @@ import logging
 import uuid
 from typing import Any
 
-from sqlalchemy import delete, select, text
+from sqlalchemy import delete, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.models.knowledge_chunk import KnowledgeChunk
@@ -100,9 +100,7 @@ async def _check_pgvector(db: AsyncSession) -> bool:
     if _pgvector_available is not None:
         return _pgvector_available
     try:
-        result = await db.execute(
-            text("SELECT 1 FROM pg_extension WHERE extname = 'vector'")
-        )
+        result = await db.execute(text("SELECT 1 FROM pg_extension WHERE extname = 'vector'"))
         _pgvector_available = result.scalar_one_or_none() is not None
     except Exception:
         _pgvector_available = False
@@ -137,7 +135,7 @@ async def ingest_document(
     chunk_ids: list[uuid.UUID] = []
     has_pgvector = await _check_pgvector(db)
 
-    for i, (chunk_text, embedding) in enumerate(zip(chunks, embeddings)):
+    for i, (chunk_text, embedding) in enumerate(zip(chunks, embeddings, strict=False)):
         chunk = KnowledgeChunk(
             tenant_id=tenant_id,
             source_type=source_type,
@@ -155,9 +153,7 @@ async def ingest_document(
         if embedding and has_pgvector:
             try:
                 await db.execute(
-                    text(
-                        "UPDATE knowledge_chunks SET embedding = :vec WHERE id = :id"
-                    ),
+                    text("UPDATE knowledge_chunks SET embedding = :vec WHERE id = :id"),
                     {"vec": str(embedding), "id": str(chunk.id)},
                 )
             except Exception as e:

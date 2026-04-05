@@ -12,6 +12,7 @@ from core.models.base import Base
 
 class LOTOProcedure(Base):
     """Machine-specific energy isolation procedure template."""
+
     __tablename__ = "loto_procedures"
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -30,9 +31,7 @@ class LOTOProcedure(Base):
     ppe_required: Mapped[list | None] = mapped_column(ARRAY(String), nullable=True)
     special_instructions: Mapped[str | None] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, server_default="true")
-    approved_by: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
-    )
+    approved_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     approved_at: Mapped[datetime | None] = mapped_column(nullable=True)
     created_at: Mapped[datetime] = mapped_column(server_default=text("NOW()"))
 
@@ -43,6 +42,7 @@ class LOTOProcedure(Base):
 
 class LOTOPermit(Base):
     """Active lock-out permit linked to a work order."""
+
     __tablename__ = "loto_permits"
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -59,12 +59,8 @@ class LOTOPermit(Base):
     )
     status: Mapped[str] = mapped_column(String, server_default="draft")
     # draft → active → work_in_progress → completed | cancelled
-    requested_by: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
-    )
-    authorized_by: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
-    )
+    requested_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    authorized_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     authorized_at: Mapped[datetime | None] = mapped_column(nullable=True)
     isolation_steps: Mapped[list] = mapped_column(JSONB, server_default="[]")
     # [{step_idx, locked_by, locked_at, lock_id, verified, unlocked_by, unlocked_at}]
@@ -83,6 +79,7 @@ class LOTOPermit(Base):
 
 class PermitToWork(Base):
     """General permit-to-work for hazardous activities."""
+
     __tablename__ = "permits_to_work"
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -102,20 +99,14 @@ class PermitToWork(Base):
     hazards_identified: Mapped[list] = mapped_column(JSONB, server_default="[]")
     control_measures: Mapped[list] = mapped_column(JSONB, server_default="[]")
     ppe_required: Mapped[list | None] = mapped_column(ARRAY(String), nullable=True)
-    requested_by: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
-    )
-    approved_by: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
-    )
+    requested_by: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    approved_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     approved_at: Mapped[datetime | None] = mapped_column(nullable=True)
     valid_from: Mapped[datetime | None] = mapped_column(nullable=True)
     valid_until: Mapped[datetime | None] = mapped_column(nullable=True)
     status: Mapped[str] = mapped_column(String, server_default="pending")
     # pending → approved → active → closed | expired
-    closed_by: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
-    )
+    closed_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     closed_at: Mapped[datetime | None] = mapped_column(nullable=True)
     created_at: Mapped[datetime] = mapped_column(server_default=text("NOW()"))
 

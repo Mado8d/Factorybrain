@@ -16,7 +16,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.auth.routes import CurrentUser
 from core.database import get_db, set_tenant_context
-from core.models.user import User
 
 from . import embeddings
 from . import service as ai_service
@@ -58,9 +57,7 @@ class ChatStreamRequest(BaseModel):
 
 
 class IngestDocumentRequest(BaseModel):
-    source_type: str = Field(
-        ..., description="Type: manual, procedure, specification, work_order"
-    )
+    source_type: str = Field(..., description="Type: manual, procedure, specification, work_order")
     source_name: str = Field(..., description="Human-readable document name")
     content_text: str = Field(..., description="Full text content to index")
     machine_id: uuid.UUID | None = None
@@ -186,9 +183,7 @@ async def analyze_anomaly(
     thresholds = (machine.get("metadata") or {}).get("thresholds", {})
     sensor_data: list[dict] = []
 
-    result = await ai_service.analyze_anomaly(
-        machine, sensor_data, recent_wos, thresholds
-    )
+    result = await ai_service.analyze_anomaly(machine, sensor_data, recent_wos, thresholds)
     return result
 
 
@@ -242,9 +237,7 @@ async def chat(
     await set_tenant_context(db, str(user.tenant_id))
 
     # Search for relevant context
-    context_chunks = await embeddings.search_similar(
-        db, user.tenant_id, body.message, machine_id=body.machine_id
-    )
+    context_chunks = await embeddings.search_similar(db, user.tenant_id, body.message, machine_id=body.machine_id)
 
     # Build machine context if specified
     machine = None
@@ -257,10 +250,7 @@ async def chat(
     response_text = await ai_service.chat(messages, context_chunks, machine)
     return {
         "response": response_text,
-        "sources": [
-            {"source_name": c.get("source_name"), "similarity": c.get("similarity")}
-            for c in context_chunks
-        ],
+        "sources": [{"source_name": c.get("source_name"), "similarity": c.get("similarity")} for c in context_chunks],
     }
 
 
@@ -274,9 +264,7 @@ async def chat_stream(
     _require_ai()
     await set_tenant_context(db, str(user.tenant_id))
 
-    context_chunks = await embeddings.search_similar(
-        db, user.tenant_id, body.message, machine_id=body.machine_id
-    )
+    context_chunks = await embeddings.search_similar(db, user.tenant_id, body.message, machine_id=body.machine_id)
 
     machine = None
     if body.machine_id:
@@ -289,10 +277,7 @@ async def chat_stream(
             # SSE format
             yield f"data: {json.dumps({'token': token})}\n\n"
         # Send sources at the end
-        sources = [
-            {"source_name": c.get("source_name"), "similarity": c.get("similarity")}
-            for c in context_chunks
-        ]
+        sources = [{"source_name": c.get("source_name"), "similarity": c.get("similarity")} for c in context_chunks]
         yield f"data: {json.dumps({'done': True, 'sources': sources})}\n\n"
 
     return StreamingResponse(

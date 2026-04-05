@@ -53,5 +53,6 @@ class MachineResponse(BaseModel):
 
 class MachineTelemetryQuery(BaseModel):
     """Query parameters for telemetry data."""
+
     hours: int = 24
     interval: str = "5 minutes"

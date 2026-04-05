@@ -17,9 +17,7 @@ class SensorNode(Base):
     tenant_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True
     )
-    machine_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("machines.id"), nullable=True
-    )
+    machine_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("machines.id"), nullable=True)
     node_type: Mapped[str] = mapped_column(String, nullable=False, server_default="vibesense")
     firmware_ver: Mapped[str | None] = mapped_column(String, nullable=True)
     hw_revision: Mapped[str | None] = mapped_column(String, nullable=True)

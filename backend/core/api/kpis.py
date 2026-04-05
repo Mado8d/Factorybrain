@@ -32,6 +32,7 @@ async def get_mttr(
     mid = None
     if machine_id:
         import uuid
+
         mid = uuid.UUID(machine_id)
     return await kpi_service.get_mttr(db, days, mid)
 
@@ -47,6 +48,7 @@ async def get_mtbf(
     mid = None
     if machine_id:
         import uuid
+
         mid = uuid.UUID(machine_id)
     return await kpi_service.get_mtbf(db, days, mid)
 
@@ -101,6 +103,7 @@ async def get_cost(
     mid = None
     if machine_id:
         import uuid
+
         mid = uuid.UUID(machine_id)
     return await kpi_service.get_maintenance_cost(db, days, mid)
 

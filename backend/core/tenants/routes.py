@@ -40,6 +40,7 @@ def _merge_settings(stored: dict | None) -> dict:
 
 # --- Tenant settings (any authenticated user can read their own tenant) ---
 
+
 @router.get("/settings", response_model=TenantSettingsResponse)
 async def get_tenant_settings(user: CurrentUser, db: AsyncSession = Depends(get_db)):
     """Get settings for the current user's tenant (merged with defaults)."""
@@ -80,6 +81,7 @@ async def update_tenant_settings(
 
 # --- Admin CRUD ---
 
+
 @router.get("/", response_model=list[TenantResponse])
 async def list_tenants(user: User = AdminUser, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Tenant).order_by(Tenant.name))
@@ -87,9 +89,7 @@ async def list_tenants(user: User = AdminUser, db: AsyncSession = Depends(get_db
 
 
 @router.get("/{tenant_id}", response_model=TenantResponse)
-async def get_tenant(
-    tenant_id: uuid.UUID, user: User = AdminUser, db: AsyncSession = Depends(get_db)
-):
+async def get_tenant(tenant_id: uuid.UUID, user: User = AdminUser, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Tenant).where(Tenant.id == tenant_id))
     tenant = result.scalar_one_or_none()
     if not tenant:
@@ -98,9 +98,7 @@ async def get_tenant(
 
 
 @router.post("/", response_model=TenantResponse, status_code=201)
-async def create_tenant(
-    data: TenantCreate, user: User = AdminUser, db: AsyncSession = Depends(get_db)
-):
+async def create_tenant(data: TenantCreate, user: User = AdminUser, db: AsyncSession = Depends(get_db)):
     tenant = Tenant(**data.model_dump())
     db.add(tenant)
     await db.flush()

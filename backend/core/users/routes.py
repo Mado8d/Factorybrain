@@ -39,6 +39,7 @@ UserManager = Annotated[User, Depends(require_permission("users", "list"))]
 
 # --- User CRUD (admin/superadmin) ---
 
+
 @router.get("/", response_model=list[UserResponse])
 async def list_users(
     user: UserManager,
@@ -51,7 +52,7 @@ async def list_users(
     if user.role != Role.SUPERADMIN:
         await set_tenant_context(db, str(user.tenant_id))
     result = await user_service.list_users(db, include_inactive, limit, offset)
-    total = await user_service.count_users(db, include_inactive)
+    await user_service.count_users(db, include_inactive)
     return result
 
 
@@ -78,9 +79,7 @@ async def change_my_password(
     db: AsyncSession = Depends(get_db),
 ):
     """Change the current user's password. Requires current password."""
-    success = await user_service.change_password(
-        db, user, data.current_password, data.new_password
-    )
+    success = await user_service.change_password(db, user, data.current_password, data.new_password)
     if not success:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

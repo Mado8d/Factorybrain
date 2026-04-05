@@ -2,16 +2,16 @@
 
 import uuid
 from datetime import date
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Annotated
 
 from core.auth.routes import CurrentUser, require_role
 from core.database import get_db, set_tenant_context
 from core.models.user import User
-from core.services import scheduling_service, maintenance_service
+from core.services import maintenance_service, scheduling_service
 
 router = APIRouter()
 
@@ -19,6 +19,7 @@ AdminUser = Annotated[User, Depends(require_role("admin", "manager", "superadmin
 
 
 # --- Schemas ---
+
 
 class SkillSet(BaseModel):
     user_id: uuid.UUID
@@ -81,6 +82,7 @@ class AvailabilityResponse(BaseModel):
 
 # --- Skills ---
 
+
 @router.get("/skills", response_model=list[SkillResponse])
 async def list_skills(
     user: CurrentUser,
@@ -127,6 +129,7 @@ async def delete_skill(
 
 # --- Machine Requirements ---
 
+
 @router.get("/machines/{machine_id}/requirements", response_model=list[MachineRequirementResponse])
 async def list_machine_requirements(
     machine_id: uuid.UUID,
@@ -138,7 +141,11 @@ async def list_machine_requirements(
     return await scheduling_service.list_machine_requirements(db, machine_id)
 
 
-@router.post("/machines/{machine_id}/requirements", response_model=MachineRequirementResponse, status_code=201)
+@router.post(
+    "/machines/{machine_id}/requirements",
+    response_model=MachineRequirementResponse,
+    status_code=201,
+)
 async def set_machine_requirement(
     machine_id: uuid.UUID,
     data: MachineRequirementSet,
@@ -153,6 +160,7 @@ async def set_machine_requirement(
 
 
 # --- Availability ---
+
 
 @router.get("/availability", response_model=list[AvailabilityResponse])
 async def list_availability(
@@ -182,6 +190,7 @@ async def set_availability(
 
 # --- Smart Assignment ---
 
+
 @router.get("/suggest-assignment/{wo_id}")
 async def suggest_assignment(
     wo_id: uuid.UUID,
@@ -197,6 +206,7 @@ async def suggest_assignment(
 
 
 # --- Team Workload ---
+
 
 @router.get("/team-workload")
 async def get_team_workload(

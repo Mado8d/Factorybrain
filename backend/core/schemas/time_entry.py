@@ -5,7 +5,6 @@ from uuid import UUID
 
 from pydantic import BaseModel, field_validator
 
-
 VALID_CATEGORIES = {"wrench", "travel", "waiting", "admin"}
 
 

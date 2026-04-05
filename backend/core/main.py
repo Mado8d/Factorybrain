@@ -2,14 +2,14 @@
 
 import logging
 import sys
-from contextlib import asynccontextmanager
 from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from core.config import settings
 from core.api.routes import api_router
+from core.config import settings
 from core.ingestion.mqtt_consumer import mqtt_service
 
 logger = logging.getLogger(__name__)

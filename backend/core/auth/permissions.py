@@ -6,7 +6,7 @@ Role hierarchy (higher can do everything lower can):
 Permissions are grouped by domain. Each role has a set of allowed actions.
 """
 
-from enum import Enum
+from enum import StrEnum
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, status
@@ -15,7 +15,7 @@ from core.auth.routes import get_current_user
 from core.models.user import User
 
 
-class Role(str, Enum):
+class Role(StrEnum):
     SUPERADMIN = "superadmin"
     ADMIN = "admin"
     MANAGER = "manager"
@@ -120,8 +120,10 @@ def get_assignable_roles(role: str) -> list[str]:
 
 # --- FastAPI Dependencies ---
 
+
 def require_permission(domain: str, action: str):
     """Dependency that checks if the current user has a specific permission."""
+
     async def check(user: Annotated[User, Depends(get_current_user)]) -> User:
         if not has_permission(user.role, domain, action):
             raise HTTPException(
@@ -129,11 +131,13 @@ def require_permission(domain: str, action: str):
                 detail="Insufficient permissions",
             )
         return user
+
     return check
 
 
 def require_min_role(min_role: str):
     """Dependency: user must be at or above the given role level."""
+
     async def check(user: Annotated[User, Depends(get_current_user)]) -> User:
         if role_level(user.role) > role_level(min_role):
             raise HTTPException(
@@ -141,4 +145,5 @@ def require_min_role(min_role: str):
                 detail="Insufficient permissions",
             )
         return user
+
     return check

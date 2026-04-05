@@ -7,7 +7,7 @@ import json
 import logging
 import secrets
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import httpx
 from sqlalchemy import select
@@ -20,9 +20,8 @@ logger = logging.getLogger(__name__)
 
 # --- Endpoints ---
 
-async def list_endpoints(
-    db: AsyncSession, tenant_id: uuid.UUID
-) -> list[WebhookEndpoint]:
+
+async def list_endpoints(db: AsyncSession, tenant_id: uuid.UUID) -> list[WebhookEndpoint]:
     result = await db.execute(
         select(WebhookEndpoint)
         .where(WebhookEndpoint.tenant_id == tenant_id)
@@ -31,12 +30,8 @@ async def list_endpoints(
     return list(result.scalars().all())
 
 
-async def get_endpoint(
-    db: AsyncSession, endpoint_id: uuid.UUID
-) -> WebhookEndpoint | None:
-    result = await db.execute(
-        select(WebhookEndpoint).where(WebhookEndpoint.id == endpoint_id)
-    )
+async def get_endpoint(db: AsyncSession, endpoint_id: uuid.UUID) -> WebhookEndpoint | None:
+    result = await db.execute(select(WebhookEndpoint).where(WebhookEndpoint.id == endpoint_id))
     return result.scalar_one_or_none()
 
 
@@ -60,9 +55,7 @@ async def create_endpoint(
     return endpoint
 
 
-async def update_endpoint(
-    db: AsyncSession, endpoint: WebhookEndpoint, data: dict
-) -> WebhookEndpoint:
+async def update_endpoint(db: AsyncSession, endpoint: WebhookEndpoint, data: dict) -> WebhookEndpoint:
     for field, value in data.items():
         if field in ("url", "events", "is_active", "description"):
             setattr(endpoint, field, value)
@@ -77,6 +70,7 @@ async def delete_endpoint(db: AsyncSession, endpoint: WebhookEndpoint) -> None:
 
 
 # --- Event emission ---
+
 
 async def emit_event(
     db: AsyncSession,
@@ -128,8 +122,8 @@ async def deliver_webhook(
             )
         delivery.status_code = response.status_code
         delivery.response_body = response.text[:2000] if response.text else None
-        delivery.delivered_at = datetime.now(timezone.utc)
-        endpoint.last_triggered_at = datetime.now(timezone.utc)
+        delivery.delivered_at = datetime.now(UTC)
+        endpoint.last_triggered_at = datetime.now(UTC)
 
         if response.status_code >= 400:
             delivery.error = f"HTTP {response.status_code}"
@@ -150,9 +144,8 @@ async def deliver_webhook(
 
 # --- Delivery history ---
 
-async def list_deliveries(
-    db: AsyncSession, endpoint_id: uuid.UUID, limit: int = 50
-) -> list[WebhookDelivery]:
+
+async def list_deliveries(db: AsyncSession, endpoint_id: uuid.UUID, limit: int = 50) -> list[WebhookDelivery]:
     result = await db.execute(
         select(WebhookDelivery)
         .where(WebhookDelivery.endpoint_id == endpoint_id)
@@ -163,6 +156,7 @@ async def list_deliveries(
 
 
 # --- Helpers ---
+
 
 def _sign_payload(secret: str, payload_bytes: bytes) -> str:
     """Compute HMAC-SHA256 hex digest of payload using the endpoint secret."""

@@ -10,6 +10,7 @@ from core.auth.permissions import VALID_ROLES
 
 class UserCreate(BaseModel):
     """Create a new user within a tenant."""
+
     email: EmailStr
     name: str
     role: str = "viewer"
@@ -40,6 +41,7 @@ class UserCreate(BaseModel):
 
 class UserUpdate(BaseModel):
     """Update user details (admin action)."""
+
     name: str | None = None
     email: EmailStr | None = None
     role: str | None = None
@@ -55,6 +57,7 @@ class UserUpdate(BaseModel):
 
 class UserResponse(BaseModel):
     """User response — safe for listing (no password hash)."""
+
     id: UUID
     tenant_id: UUID
     email: str
@@ -70,6 +73,7 @@ class UserResponse(BaseModel):
 
 class UserProfileUpdate(BaseModel):
     """Users can update their own profile (limited fields)."""
+
     name: str | None = None
 
     @field_validator("name")
@@ -84,6 +88,7 @@ class UserProfileUpdate(BaseModel):
 
 class PasswordChange(BaseModel):
     """Change own password — requires current password."""
+
     current_password: str
     new_password: str
 
@@ -97,6 +102,7 @@ class PasswordChange(BaseModel):
 
 class PasswordReset(BaseModel):
     """Admin resets a user's password (no current password needed)."""
+
     new_password: str
 
     @field_validator("new_password")

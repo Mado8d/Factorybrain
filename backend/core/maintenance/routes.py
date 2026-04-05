@@ -20,11 +20,15 @@ from core.schemas.maintenance import (
     WorkOrderResponse,
     WorkOrderUpdate,
 )
+from core.schemas.time_entry import (
+    TimeEntryResponse,
+    TimeManualEntry,
+    TimeStartRequest,
+    TimeStopRequest,
+)
 from core.schemas.work_order_event import EventCreate, EventResponse
-from core.schemas.time_entry import TimeEntryResponse, TimeStartRequest, TimeStopRequest, TimeManualEntry
 from core.schemas.work_request import WorkRequestResponse
-from core.services import maintenance_service
-from core.services import event_service, time_service, request_service
+from core.services import event_service, maintenance_service, request_service, time_service
 
 
 def _event_to_dict(e) -> dict:
@@ -34,10 +38,12 @@ def _event_to_dict(e) -> dict:
         d["metadata"] = d.pop("metadata_")
     return d
 
+
 router = APIRouter()
 
 
 # --- Alerts ---
+
 
 @router.get("/alerts", response_model=list[AlertResponse])
 async def list_alerts(
@@ -52,9 +58,7 @@ async def list_alerts(
 
 
 @router.get("/alerts/{alert_id}", response_model=AlertResponse)
-async def get_alert(
-    alert_id: uuid.UUID, user: CurrentUser, db: AsyncSession = Depends(get_db)
-):
+async def get_alert(alert_id: uuid.UUID, user: CurrentUser, db: AsyncSession = Depends(get_db)):
     await set_tenant_context(db, str(user.tenant_id))
     alert = await maintenance_service.get_alert(db, alert_id)
     if not alert:
@@ -63,9 +67,7 @@ async def get_alert(
 
 
 @router.post("/alerts", response_model=AlertResponse, status_code=201)
-async def create_alert(
-    data: AlertCreate, user: CurrentUser, db: AsyncSession = Depends(get_db)
-):
+async def create_alert(data: AlertCreate, user: CurrentUser, db: AsyncSession = Depends(get_db)):
     await set_tenant_context(db, str(user.tenant_id))
     return await maintenance_service.create_alert(db, user.tenant_id, data)
 
@@ -86,6 +88,7 @@ async def update_alert(
 
 # --- Work Orders ---
 
+
 @router.get("/work-orders", response_model=list[WorkOrderResponse])
 async def list_work_orders(
     user: CurrentUser,
@@ -99,9 +102,7 @@ async def list_work_orders(
 
 
 @router.get("/work-orders/{wo_id}", response_model=WorkOrderResponse)
-async def get_work_order(
-    wo_id: uuid.UUID, user: CurrentUser, db: AsyncSession = Depends(get_db)
-):
+async def get_work_order(wo_id: uuid.UUID, user: CurrentUser, db: AsyncSession = Depends(get_db)):
     await set_tenant_context(db, str(user.tenant_id))
     wo = await maintenance_service.get_work_order(db, wo_id)
     if not wo:
@@ -110,9 +111,7 @@ async def get_work_order(
 
 
 @router.post("/work-orders", response_model=WorkOrderResponse, status_code=201)
-async def create_work_order(
-    data: WorkOrderCreate, user: CurrentUser, db: AsyncSession = Depends(get_db)
-):
+async def create_work_order(data: WorkOrderCreate, user: CurrentUser, db: AsyncSession = Depends(get_db)):
     await set_tenant_context(db, str(user.tenant_id))
     return await maintenance_service.create_work_order(db, user.tenant_id, data)
 
@@ -133,6 +132,7 @@ async def update_work_order(
 
 # --- Service Providers ---
 
+
 @router.get("/providers", response_model=list[ServiceProviderResponse])
 async def list_providers(user: CurrentUser, db: AsyncSession = Depends(get_db)):
     await set_tenant_context(db, str(user.tenant_id))
@@ -151,6 +151,7 @@ async def create_provider(
 
 # --- Spare Parts ---
 
+
 @router.get("/parts", response_model=list[SparePartResponse])
 async def list_parts(user: CurrentUser, db: AsyncSession = Depends(get_db)):
     await set_tenant_context(db, str(user.tenant_id))
@@ -158,17 +159,13 @@ async def list_parts(user: CurrentUser, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/parts", response_model=SparePartResponse, status_code=201)
-async def create_part(
-    data: SparePartCreate, user: CurrentUser, db: AsyncSession = Depends(get_db)
-):
+async def create_part(data: SparePartCreate, user: CurrentUser, db: AsyncSession = Depends(get_db)):
     await set_tenant_context(db, str(user.tenant_id))
     return await maintenance_service.create_spare_part(db, user.tenant_id, data)
 
 
 @router.patch("/parts/{part_id}", response_model=SparePartResponse)
-async def update_part(
-    part_id: uuid.UUID, data: SparePartUpdate, user: CurrentUser, db: AsyncSession = Depends(get_db)
-):
+async def update_part(part_id: uuid.UUID, data: SparePartUpdate, user: CurrentUser, db: AsyncSession = Depends(get_db)):
     await set_tenant_context(db, str(user.tenant_id))
     part = await maintenance_service.get_spare_part(db, part_id)
     if not part:
@@ -177,9 +174,7 @@ async def update_part(
 
 
 @router.delete("/parts/{part_id}", status_code=204)
-async def delete_part(
-    part_id: uuid.UUID, user: CurrentUser, db: AsyncSession = Depends(get_db)
-):
+async def delete_part(part_id: uuid.UUID, user: CurrentUser, db: AsyncSession = Depends(get_db)):
     await set_tenant_context(db, str(user.tenant_id))
     part = await maintenance_service.get_spare_part(db, part_id)
     if not part:
@@ -188,6 +183,7 @@ async def delete_part(
 
 
 # --- Work Order Events (Activity Feed) ---
+
 
 @router.get("/work-orders/{wo_id}/events", response_model=list[EventResponse])
 async def list_wo_events(
@@ -233,6 +229,7 @@ async def create_wo_event(
 
 
 # --- Time Tracking ---
+
 
 @router.get("/work-orders/{wo_id}/time", response_model=list[TimeEntryResponse])
 async def list_wo_time(
@@ -338,8 +335,14 @@ async def manual_time_entry(
     """Manually log time for a work order."""
     await set_tenant_context(db, str(user.tenant_id))
     entry = await time_service.create_manual_entry(
-        db, user.tenant_id, wo_id, user.id,
-        data.started_at, data.stopped_at, data.category, data.notes,
+        db,
+        user.tenant_id,
+        wo_id,
+        user.id,
+        data.started_at,
+        data.stopped_at,
+        data.category,
+        data.notes,
     )
     return TimeEntryResponse(
         **{c.key: getattr(entry, c.key) for c in entry.__table__.columns},
@@ -363,6 +366,7 @@ async def get_my_active_timer(
 
 
 # --- Work Requests (admin review) ---
+
 
 @router.get("/requests", response_model=list[WorkRequestResponse])
 async def list_requests(

@@ -1,12 +1,11 @@
 """File upload routes for machine documents."""
 
-import os
 import re
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,7 +17,19 @@ router = APIRouter()
 
 UPLOAD_DIR = Path("/app/uploads")
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
-ALLOWED_EXTENSIONS = {".pdf", ".png", ".jpg", ".jpeg", ".webp", ".doc", ".docx", ".xls", ".xlsx", ".csv", ".txt"}
+ALLOWED_EXTENSIONS = {
+    ".pdf",
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".webp",
+    ".doc",
+    ".docx",
+    ".xls",
+    ".xlsx",
+    ".csv",
+    ".txt",
+}
 
 
 def _machine_dir(machine_id: uuid.UUID) -> Path:
@@ -43,7 +54,10 @@ async def upload_document(
     # Validate extension
     ext = Path(file.filename or "").suffix.lower()
     if ext not in ALLOWED_EXTENSIONS:
-        raise HTTPException(status_code=400, detail=f"File type {ext} not allowed. Allowed: {', '.join(ALLOWED_EXTENSIONS)}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"File type {ext} not allowed. Allowed: {', '.join(ALLOWED_EXTENSIONS)}",
+        )
 
     # Read and check size
     content = await file.read()
@@ -51,8 +65,8 @@ async def upload_document(
         raise HTTPException(status_code=400, detail=f"File too large. Max {MAX_FILE_SIZE // 1024 // 1024}MB")
 
     # Sanitize filename — strip path components
-    clean_name = re.sub(r'[^\w\-.]', '_', Path(file.filename or "file").name)
-    safe_name = f"{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{clean_name}"
+    clean_name = re.sub(r"[^\w\-.]", "_", Path(file.filename or "file").name)
+    safe_name = f"{datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}_{clean_name}"
     dest = _machine_dir(machine_id) / safe_name
 
     # Verify path stays within upload dir
@@ -66,7 +80,7 @@ async def upload_document(
         "original_name": file.filename,
         "size": len(content),
         "content_type": file.content_type,
-        "uploaded_at": datetime.now(timezone.utc).isoformat(),
+        "uploaded_at": datetime.now(UTC).isoformat(),
     }
 
 
@@ -90,11 +104,13 @@ async def list_documents(
     for f in sorted(machine_dir.iterdir()):
         if f.is_file():
             stat = f.stat()
-            files.append({
-                "filename": f.name,
-                "size": stat.st_size,
-                "uploaded_at": datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat(),
-            })
+            files.append(
+                {
+                    "filename": f.name,
+                    "size": stat.st_size,
+                    "uploaded_at": datetime.fromtimestamp(stat.st_mtime, tz=UTC).isoformat(),
+                }
+            )
     return files
 
 

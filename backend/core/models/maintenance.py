@@ -7,11 +7,11 @@ from decimal import Decimal
 from sqlalchemy import (
     Boolean,
     Date,
+    Float,
     ForeignKey,
     Integer,
     Interval,
     Numeric,
-    Float,
     String,
     text,
 )
@@ -23,6 +23,7 @@ from core.models.base import Base
 
 class SparePart(Base):
     """Spare parts inventory for maintenance."""
+
     __tablename__ = "spare_parts"
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -106,9 +107,7 @@ class MaintenanceAlert(Base):
     machine_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("machines.id"), nullable=False, index=True
     )
-    node_id: Mapped[str | None] = mapped_column(
-        String, ForeignKey("sensor_nodes.id"), nullable=True, index=True
-    )
+    node_id: Mapped[str | None] = mapped_column(String, ForeignKey("sensor_nodes.id"), nullable=True, index=True)
     alert_type: Mapped[str] = mapped_column(String, nullable=False)
     severity: Mapped[str] = mapped_column(String, nullable=False, server_default="info")
     anomaly_score: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -126,6 +125,7 @@ class MaintenanceAlert(Base):
 
 class PreventiveMaintenanceSchedule(Base):
     """PM schedule — defines recurring maintenance tasks for a machine."""
+
     __tablename__ = "pm_schedules"
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -192,6 +192,7 @@ class PreventiveMaintenanceSchedule(Base):
 
 class PMOccurrence(Base):
     """Tracks each individual PM instance for compliance reporting."""
+
     __tablename__ = "pm_occurrences"
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -247,9 +248,7 @@ class MaintenanceWorkOrder(Base):
         UUID(as_uuid=True), ForeignKey("service_provider_users.id"), nullable=True
     )
     assigned_at: Mapped[datetime | None] = mapped_column(nullable=True)
-    assigned_by: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
-    )
+    assigned_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     status: Mapped[str] = mapped_column(String, server_default="draft")
     requested_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     scheduled_date: Mapped[date | None] = mapped_column(Date, nullable=True)
@@ -263,9 +262,7 @@ class MaintenanceWorkOrder(Base):
     labor_hours: Mapped[Decimal | None] = mapped_column(Numeric(6, 2), nullable=True)
     total_cost: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
     verified_at: Mapped[datetime | None] = mapped_column(nullable=True)
-    verified_by: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
-    )
+    verified_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     verification_status: Mapped[str | None] = mapped_column(String, nullable=True)
     quality_rating: Mapped[int | None] = mapped_column(Integer, nullable=True)
     downtime_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)

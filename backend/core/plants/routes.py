@@ -1,11 +1,10 @@
 """Plant and production line management routes."""
 
 import uuid
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from typing import Annotated
 
 from core.auth.routes import CurrentUser, require_role
 from core.database import get_db, set_tenant_context
@@ -16,7 +15,6 @@ from core.schemas.plant import (
     PlantUpdate,
     ProductionLineCreate,
     ProductionLineResponse,
-    ProductionLineUpdate,
 )
 from core.services import plant_service
 
@@ -27,6 +25,7 @@ AdminUser = Annotated[User, Depends(require_role("admin", "manager"))]
 
 # --- Plants ---
 
+
 @router.get("/", response_model=list[PlantResponse])
 async def list_plants(user: CurrentUser, db: AsyncSession = Depends(get_db)):
     await set_tenant_context(db, str(user.tenant_id))
@@ -34,9 +33,7 @@ async def list_plants(user: CurrentUser, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/{plant_id}", response_model=PlantResponse)
-async def get_plant(
-    plant_id: uuid.UUID, user: CurrentUser, db: AsyncSession = Depends(get_db)
-):
+async def get_plant(plant_id: uuid.UUID, user: CurrentUser, db: AsyncSession = Depends(get_db)):
     await set_tenant_context(db, str(user.tenant_id))
     plant = await plant_service.get_plant(db, plant_id)
     if not plant:
@@ -45,9 +42,7 @@ async def get_plant(
 
 
 @router.post("/", response_model=PlantResponse, status_code=201)
-async def create_plant(
-    data: PlantCreate, user: AdminUser, db: AsyncSession = Depends(get_db)
-):
+async def create_plant(data: PlantCreate, user: AdminUser, db: AsyncSession = Depends(get_db)):
     """Create a new plant (admin/manager only)."""
     await set_tenant_context(db, str(user.tenant_id))
     return await plant_service.create_plant(db, user.tenant_id, data)
@@ -68,9 +63,7 @@ async def update_plant(
 
 
 @router.delete("/{plant_id}", status_code=204)
-async def delete_plant(
-    plant_id: uuid.UUID, user: AdminUser, db: AsyncSession = Depends(get_db)
-):
+async def delete_plant(plant_id: uuid.UUID, user: AdminUser, db: AsyncSession = Depends(get_db)):
     """Delete a plant (admin/manager only)."""
     await set_tenant_context(db, str(user.tenant_id))
     plant = await plant_service.get_plant(db, plant_id)
@@ -81,10 +74,9 @@ async def delete_plant(
 
 # --- Production Lines ---
 
+
 @router.get("/{plant_id}/lines", response_model=list[ProductionLineResponse])
-async def list_lines(
-    plant_id: uuid.UUID, user: CurrentUser, db: AsyncSession = Depends(get_db)
-):
+async def list_lines(plant_id: uuid.UUID, user: CurrentUser, db: AsyncSession = Depends(get_db)):
     await set_tenant_context(db, str(user.tenant_id))
     return await plant_service.list_production_lines(db, plant_id)
 
