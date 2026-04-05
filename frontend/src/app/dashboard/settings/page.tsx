@@ -125,6 +125,7 @@ export default function SettingsPage() {
             <span className={`inline-flex px-2.5 py-1 rounded text-xs font-medium ${ROLE_COLORS[user?.role || ''] || ROLE_COLORS.viewer}`}>
               {user?.role || ''}
             </span>
+            <p className="text-xs text-muted-foreground mt-1">Role changes are managed by your administrator</p>
           </div>
           <div>
             <label className="block text-sm font-medium text-foreground mb-1">Tenant ID</label>

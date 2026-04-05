@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/store/auth';
-import { Plus, ArrowRight, CheckCircle, AlertTriangle, CalendarCheck, Clock, RotateCcw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, ArrowRight, CheckCircle, AlertTriangle, CalendarCheck, Clock, RotateCcw, ChevronLeft, ChevronRight, Camera, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -96,6 +96,8 @@ export default function MaintenancePage() {
   const [woDescription, setWoDescription] = useState('');
   const [woMachineId, setWoMachineId] = useState('');
   const [woPriority, setWoPriority] = useState('medium');
+  const [woPhotos, setWoPhotos] = useState<File[]>([]);
+  const [woPhotoPreviews, setWoPhotoPreviews] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
   // Edit WO state
@@ -176,24 +178,66 @@ export default function MaintenancePage() {
       setWoPriority('medium');
       setWoDescription('');
     }
+    setWoPhotos([]);
+    setWoPhotoPreviews([]);
     setCreateWoOpen(true);
+  };
+
+  const handleWoPhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    setWoPhotos(prev => [...prev, ...files]);
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setWoPhotoPreviews(prev => [...prev, ev.target?.result as string]);
+      };
+      reader.readAsDataURL(file);
+    });
+    e.target.value = '';
+  };
+
+  const removeWoPhoto = (index: number) => {
+    setWoPhotos(prev => prev.filter((_, i) => i !== index));
+    setWoPhotoPreviews(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleCreateWo = async () => {
     if (!woTitle.trim() || !woMachineId) return;
     setSubmitting(true);
     try {
-      await api.createWorkOrder({
+      const wo = await api.createWorkOrder({
         machine_id: woMachineId,
         title: woTitle.trim(),
         description: woDescription.trim() || undefined,
         priority: woPriority,
         trigger_type: woFromAlert ? 'alert-driven' : 'manual',
         trigger_alert_id: woFromAlert?.id,
-      });
+      }) as WorkOrder;
       // If created from alert, acknowledge the alert
       if (woFromAlert && woFromAlert.status === 'open') {
         await api.updateAlert(woFromAlert.id, { status: 'acknowledged' });
+      }
+      // Upload photos as a WO event
+      if (woPhotos.length > 0 && wo?.id) {
+        try {
+          const attachments: { filename: string; data: string }[] = [];
+          for (const file of woPhotos) {
+            const data = await new Promise<string>((resolve) => {
+              const reader = new FileReader();
+              reader.onload = (ev) => resolve(ev.target?.result as string);
+              reader.readAsDataURL(file);
+            });
+            attachments.push({ filename: file.name, data });
+          }
+          await api.createWOEvent(wo.id, {
+            event_type: 'photo',
+            content: `${woPhotos.length} photo(s) attached during creation`,
+            attachments,
+          });
+        } catch (photoErr) {
+          console.error('Failed to attach photos:', photoErr);
+        }
       }
       setCreateWoOpen(false);
       await loadData();
@@ -789,6 +833,32 @@ export default function MaintenancePage() {
             <div>
               <Label>Description</Label>
               <Textarea value={woDescription} onChange={(e) => setWoDescription(e.target.value)} rows={3} className="mt-1 font-sans" placeholder="Describe the maintenance task..." />
+            </div>
+            <div>
+              <Label>Attach Photos</Label>
+              <div className="mt-1">
+                <label className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-secondary text-muted-foreground hover:text-foreground hover:bg-accent cursor-pointer transition-colors">
+                  <Camera className="h-3.5 w-3.5" />
+                  {woPhotos.length > 0 ? `${woPhotos.length} selected` : 'Choose photos'}
+                  <input type="file" accept="image/*" multiple onChange={handleWoPhotoSelect} className="hidden" />
+                </label>
+              </div>
+              {woPhotoPreviews.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {woPhotoPreviews.map((src, i) => (
+                    <div key={i} className="relative group">
+                      <img src={src} alt={`Photo ${i + 1}`} className="h-16 w-16 object-cover rounded-md border border-border" />
+                      <button
+                        type="button"
+                        onClick={() => removeWoPhoto(i)}
+                        className="absolute -top-1.5 -right-1.5 h-4 w-4 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="h-2.5 w-2.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
           <DialogFooter>

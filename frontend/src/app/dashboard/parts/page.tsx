@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/store/auth';
-import { Plus, Pencil, Trash2, Barcode, Printer, Search, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Database } from 'lucide-react';
+import { Plus, Pencil, Trash2, Barcode, Printer, Search, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Database, ImageIcon, X } from 'lucide-react';
 import Barcode128 from 'react-barcode';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -60,6 +60,7 @@ export default function PartsPage() {
   const [formQty, setFormQty] = useState('0');
   const [formMinStock, setFormMinStock] = useState('1');
   const [formLocation, setFormLocation] = useState('');
+  const [formImage, setFormImage] = useState<string | null>(null);
 
   // Delete dialog
   const [deletePart, setDeletePart] = useState<SparePart | null>(null);
@@ -172,6 +173,7 @@ export default function PartsPage() {
     setEditPart(null);
     setFormName(''); setFormPartNo(''); setFormCategory(''); setFormSupplier('');
     setFormCost(''); setFormQty('0'); setFormMinStock('1'); setFormLocation('');
+    setFormImage(null);
     setDialogOpen(true);
   };
 
@@ -185,6 +187,7 @@ export default function PartsPage() {
     setFormQty(part.quantity_in_stock.toString());
     setFormMinStock(part.min_stock_level.toString());
     setFormLocation(part.location || '');
+    setFormImage((part as any).image_url || null);
     setDialogOpen(true);
   };
 
@@ -200,6 +203,7 @@ export default function PartsPage() {
       data.quantity_in_stock = parseInt(formQty) || 0;
       data.min_stock_level = parseInt(formMinStock) || 1;
       if (formLocation.trim()) data.location = formLocation.trim();
+      if (formImage) data.image_url = formImage;
 
       if (editPart) {
         await api.updateSparePart(editPart.id, data);
@@ -354,7 +358,16 @@ export default function PartsPage() {
                   <tr key={part.id} className={`border-b border-border last:border-0 hover:bg-accent/50 transition-colors ${rowBorder(part)}`}>
                     <td className="px-3 py-1.5 text-xs font-mono text-muted-foreground whitespace-nowrap">{part.part_number || '\u2014'}</td>
                     <td className="px-3 py-1.5">
-                      <span className="text-sm font-medium text-foreground">{part.name}</span>
+                      <div className="flex items-center gap-2">
+                        {(part as any).image_url ? (
+                          <img src={(part as any).image_url} alt="" className="h-6 w-6 object-cover rounded shrink-0" />
+                        ) : (
+                          <div className="h-6 w-6 rounded bg-secondary flex items-center justify-center shrink-0">
+                            <ImageIcon className="h-3 w-3 text-muted-foreground" />
+                          </div>
+                        )}
+                        <span className="text-sm font-medium text-foreground">{part.name}</span>
+                      </div>
                     </td>
                     <td className="px-3 py-1.5 hidden md:table-cell">
                       <span className="text-xs text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">{part.category || 'General'}</span>
@@ -458,6 +471,35 @@ export default function PartsPage() {
             <div className="col-span-2">
               <Label>Storage Location</Label>
               <Input value={formLocation} onChange={(e) => setFormLocation(e.target.value)} placeholder="e.g. Warehouse A, Shelf 3" className="mt-1" />
+            </div>
+            <div className="col-span-2">
+              <Label>Image</Label>
+              <div className="mt-1 flex items-center gap-3">
+                <label className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-secondary text-muted-foreground hover:text-foreground hover:bg-accent cursor-pointer transition-colors">
+                  <ImageIcon className="h-3.5 w-3.5" />
+                  {formImage ? 'Change image' : 'Choose image'}
+                  <input type="file" accept="image/*" onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (ev) => setFormImage(ev.target?.result as string);
+                    reader.readAsDataURL(file);
+                    e.target.value = '';
+                  }} className="hidden" />
+                </label>
+                {formImage && (
+                  <div className="relative group">
+                    <img src={formImage} alt="Part" className="h-16 w-16 object-cover rounded-md border border-border" />
+                    <button
+                      type="button"
+                      onClick={() => setFormImage(null)}
+                      className="absolute -top-1.5 -right-1.5 h-4 w-4 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="h-2.5 w-2.5" />
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
           <DialogFooter>
