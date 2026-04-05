@@ -292,8 +292,15 @@ async def get_oee_trend(
 
 
 async def seed_demo_data(db: AsyncSession, tenant_id: uuid.UUID) -> int:
-    """Generate 30 days of realistic production data. Returns count of logs created."""
-    # Get existing machines
+    """Generate 30 days of realistic production data. Returns count of logs created.
+
+    Realistic patterns:
+    - Each machine runs one product for a multi-day run (3-7 days)
+    - Same machine + same product = consistent performance (±5%)
+    - Defect rate: 0.1-0.5% (industry-realistic, not 5%)
+    - Occasional bad day: 10% chance (equipment issue, changeover)
+    - Consistent cycle times per machine (minor variation only)
+    """
     result = await db.execute(select(Machine).where(Machine.tenant_id == tenant_id))
     machines = list(result.scalars().all())
 
@@ -302,34 +309,56 @@ async def seed_demo_data(db: AsyncSession, tenant_id: uuid.UUID) -> int:
 
     count = 0
     today = date.today()
-    product_types = ["Type A", "Type B", "Type C"]
+    products = ["Product A-722", "Product B-415", "Product C-308"]
     shifts = ["morning", "afternoon"]
 
-    for day_offset in range(30):
-        shift_date = today - timedelta(days=day_offset)
+    for machine in machines:
+        # Each machine has stable characteristics
+        base_cycle_time = random.uniform(40, 90)  # seconds per unit
+        base_planned = random.randint(200, 500)  # units per shift
+        base_efficiency = random.uniform(0.92, 0.98)  # 92-98% typical
 
-        for machine in machines:
-            # Vary cycle time and planned units by machine
-            base_cycle_time = random.uniform(30, 120)
-            base_planned = random.randint(100, 500)
+        # Machine runs one product for a batch of days, then switches
+        current_product = random.choice(products)
+        days_on_product = 0
+        batch_length = random.randint(3, 7)
+
+        for day_offset in range(30):
+            shift_date = today - timedelta(days=day_offset)
+
+            # Product changeover every batch_length days
+            days_on_product += 1
+            if days_on_product > batch_length:
+                current_product = random.choice([p for p in products if p != current_product])
+                days_on_product = 1
+                batch_length = random.randint(3, 7)
 
             for shift in shifts:
-                planned_units = base_planned + random.randint(-20, 20)
+                planned_units = base_planned + random.randint(-10, 10)
                 planned_runtime = 480  # 8 hours
 
-                # Most days are good, some are bad
-                is_bad_day = random.random() < 0.1
-                if is_bad_day:
-                    efficiency = random.uniform(0.60, 0.75)
+                # 10% chance of a bad shift (equipment issue)
+                is_bad_shift = random.random() < 0.10
+                # First day after product change = changeover, slightly lower
+                is_changeover = days_on_product == 1
+
+                if is_bad_shift:
+                    efficiency = random.uniform(0.65, 0.80)
                     downtime = random.randint(30, 90)
+                    defect_rate = random.uniform(0.005, 0.02)  # 0.5-2% on bad days
+                elif is_changeover:
+                    efficiency = base_efficiency * random.uniform(0.90, 0.95)
+                    downtime = random.randint(15, 45)  # changeover time
+                    defect_rate = random.uniform(0.003, 0.008)  # slightly higher during setup
                 else:
-                    efficiency = random.uniform(0.85, 1.0)
-                    downtime = random.randint(0, 30)
+                    # Normal production: consistent with small variation
+                    efficiency = base_efficiency * random.uniform(0.97, 1.03)
+                    downtime = random.randint(0, 15)
+                    defect_rate = random.uniform(0.001, 0.004)  # 0.1-0.4% = realistic
 
                 actual_runtime = max(planned_runtime - downtime, 120)
-                actual_units = int(planned_units * efficiency)
-                defect_rate = random.uniform(0.01, 0.05)
-                defect_units = max(1, int(actual_units * defect_rate))
+                actual_units = int(planned_units * min(efficiency, 1.0))
+                defect_units = max(0, int(actual_units * defect_rate))
 
                 log = ProductionLog(
                     tenant_id=tenant_id,
@@ -343,8 +372,9 @@ async def seed_demo_data(db: AsyncSession, tenant_id: uuid.UUID) -> int:
                     planned_runtime_minutes=planned_runtime,
                     actual_runtime_minutes=actual_runtime,
                     downtime_minutes=downtime,
-                    ideal_cycle_time_seconds=round(base_cycle_time + random.uniform(-5, 5), 1),
-                    product_type=random.choice(product_types),
+                    ideal_cycle_time_seconds=round(base_cycle_time + random.uniform(-2, 2), 1),
+                    product_type=current_product,
+                    batch_number=f"B{shift_date.strftime('%m%d')}-{machine.name[:3].upper()}",
                     source="simulator",
                 )
                 db.add(log)
