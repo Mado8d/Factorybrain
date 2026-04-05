@@ -40,7 +40,7 @@ const nodeTypeVariant: Record<string, 'default' | 'success' | 'warning' | 'info'
 
 export default function SensorsPage() {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin' || user?.role === 'manager';
+  const isAdmin = user?.role === 'admin' || user?.role === 'manager' || user?.role === 'superadmin';
   const [nodes, setNodes] = useState<SensorNode[]>([]);
   const [machines, setMachines] = useState<Machine[]>([]);
   const [loading, setLoading] = useState(true);

@@ -120,7 +120,7 @@ function renderStars(level: number): string {
 // --- Component ---
 export default function TeamPage() {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin' || user?.role === 'manager';
+  const isAdmin = user?.role === 'admin' || user?.role === 'manager' || user?.role === 'superadmin';
 
   const [activeTab, setActiveTab] = useState<'overview' | 'skills' | 'availability'>('overview');
   const [loading, setLoading] = useState(true);

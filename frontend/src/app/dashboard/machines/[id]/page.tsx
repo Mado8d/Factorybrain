@@ -55,7 +55,7 @@ export default function MachineDetailPage() {
   const router = useRouter();
   const { user } = useAuth();
   const machineId = params.id as string;
-  const isAdmin = user?.role === 'admin' || user?.role === 'manager';
+  const isAdmin = user?.role === 'admin' || user?.role === 'manager' || user?.role === 'superadmin';
 
   const [machine, setMachine] = useState<Machine | null>(null);
   const [nodes, setNodes] = useState<SensorNode[]>([]);

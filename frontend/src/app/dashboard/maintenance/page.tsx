@@ -75,7 +75,7 @@ const severityDotColor: Record<string, string> = {
 export default function MaintenancePage() {
   const router = useRouter();
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin' || user?.role === 'manager';
+  const isAdmin = user?.role === 'admin' || user?.role === 'manager' || user?.role === 'superadmin';
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
   const [machines, setMachines] = useState<Machine[]>([]);

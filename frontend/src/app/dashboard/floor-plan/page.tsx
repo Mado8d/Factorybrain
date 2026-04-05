@@ -50,7 +50,7 @@ const CANVAS_H = 1000;
 export default function FloorPlanPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin' || user?.role === 'manager';
+  const isAdmin = user?.role === 'admin' || user?.role === 'manager' || user?.role === 'superadmin';
 
   const [machines, setMachines] = useState<Machine[]>([]);
   const [telemetry, setTelemetry] = useState<TelemetryData>({});

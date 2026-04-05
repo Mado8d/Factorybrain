@@ -110,7 +110,7 @@ const statusLabel: Record<string, string> = {
 
 export default function SafetyPage() {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin' || user?.role === 'manager';
+  const isAdmin = user?.role === 'admin' || user?.role === 'manager' || user?.role === 'superadmin';
 
   const [activeTab, setActiveTab] = useState<'procedures' | 'permits'>('procedures');
   const [procedures, setProcedures] = useState<LOTOProcedure[]>([]);

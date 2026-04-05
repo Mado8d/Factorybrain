@@ -41,7 +41,7 @@ export default function MachinesPage() {
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState('');
 
-  const isAdmin = user?.role === 'admin' || user?.role === 'manager';
+  const isAdmin = user?.role === 'admin' || user?.role === 'manager' || user?.role === 'superadmin';
 
   const loadMachines = () => {
     api.getMachines()

@@ -131,7 +131,7 @@ export default function WorkOrderDetailPage() {
   const { user } = useAuth();
   const woId = params.id as string;
 
-  const isAdmin = user?.role === 'admin' || user?.role === 'manager';
+  const isAdmin = user?.role === 'admin' || user?.role === 'manager' || user?.role === 'superadmin';
 
   // Data states
   const [wo, setWo] = useState<WorkOrder | null>(null);
