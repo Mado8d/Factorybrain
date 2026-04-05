@@ -36,7 +36,7 @@ class WorkOrderEvent(Base):
     )  # comment, status_change, assignment, time_start, time_stop,
        # part_used, photo, checklist_update, request_note
     content: Mapped[str | None] = mapped_column(Text, nullable=True)
-    metadata: Mapped[dict] = mapped_column(JSONB, server_default="{}")
+    metadata_: Mapped[dict] = mapped_column("metadata", JSONB, server_default="{}")
     mentions: Mapped[list | None] = mapped_column(ARRAY(UUID(as_uuid=True)), nullable=True)
     attachments: Mapped[list] = mapped_column(JSONB, server_default="[]")
     created_at: Mapped[datetime] = mapped_column(server_default=text("NOW()"))

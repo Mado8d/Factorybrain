@@ -42,7 +42,7 @@ async def create_event(
         user_id=user_id,
         event_type=data.event_type,
         content=data.content,
-        metadata=data.metadata,
+        metadata_=data.metadata,
         mentions=data.mentions or None,
         attachments=data.attachments,
     )
@@ -68,7 +68,7 @@ async def create_system_event(
         user_id=user_id,
         event_type=event_type,
         content=content,
-        metadata=metadata or {},
+        metadata_=metadata or {},
     )
     db.add(event)
     await db.flush()

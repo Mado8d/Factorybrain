@@ -26,6 +26,14 @@ from core.schemas.work_request import WorkRequestResponse
 from core.services import maintenance_service
 from core.services import event_service, time_service, request_service
 
+
+def _event_to_dict(e) -> dict:
+    """Convert WorkOrderEvent to dict, remapping metadata_ → metadata."""
+    d = {c.key: getattr(e, c.key) for c in e.__table__.columns}
+    if "metadata_" in d:
+        d["metadata"] = d.pop("metadata_")
+    return d
+
 router = APIRouter()
 
 
@@ -196,7 +204,7 @@ async def list_wo_events(
     events = await event_service.list_events(db, wo_id, event_types, limit, offset)
     return [
         EventResponse(
-            **{c.key: getattr(e, c.key) for c in e.__table__.columns},
+            **_event_to_dict(e),
             user_name=e.user.name if e.user else None,
             user_role=e.user.role if e.user else None,
         )
@@ -218,7 +226,7 @@ async def create_wo_event(
         raise HTTPException(status_code=404, detail="Work order not found")
     event = await event_service.create_event(db, user.tenant_id, wo_id, user.id, data)
     return EventResponse(
-        **{c.key: getattr(event, c.key) for c in event.__table__.columns},
+        **_event_to_dict(event),
         user_name=user.name,
         user_role=user.role,
     )
