@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.models.sensor_node import SensorNode
 from core.schemas.sensor_node import SensorNodeCreate, SensorNodeUpdate
+from core.services import audit_service
 
 
 async def list_nodes(db: AsyncSession) -> list[SensorNode]:
@@ -24,6 +25,15 @@ async def create_node(db: AsyncSession, tenant_id: uuid.UUID, data: SensorNodeCr
     db.add(node)
     await db.flush()
     await db.refresh(node)
+    await audit_service.log_action(
+        db,
+        tenant_id,
+        user_id=None,
+        action="create",
+        resource_type="sensor_node",
+        resource_id=str(node.id),
+        changes={"id": node.id},
+    )
     return node
 
 

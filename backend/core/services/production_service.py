@@ -11,6 +11,7 @@ from core.models.base import utcnow
 from core.models.machine import Machine
 from core.models.production_log import ProductionLog
 from core.schemas.production import ProductionLogCreate, ProductionLogUpdate
+from core.services import audit_service
 
 
 async def list_logs(
@@ -46,19 +47,47 @@ async def create_log(db: AsyncSession, tenant_id: uuid.UUID, data: ProductionLog
     db.add(log)
     await db.flush()
     await db.refresh(log)
+    await audit_service.log_action(
+        db,
+        tenant_id,
+        user_id=None,
+        action="create",
+        resource_type="production_log",
+        resource_id=str(log.id),
+        changes={"shift_date": str(log.shift_date), "machine_id": str(log.machine_id)},
+    )
     return log
 
 
 async def update_log(db: AsyncSession, log: ProductionLog, data: ProductionLogUpdate) -> ProductionLog:
-    for field, value in data.model_dump(exclude_unset=True).items():
+    updates = data.model_dump(exclude_unset=True)
+    for field, value in updates.items():
         setattr(log, field, value)
     log.updated_at = utcnow()
     await db.flush()
     await db.refresh(log)
+    await audit_service.log_action(
+        db,
+        log.tenant_id,
+        user_id=None,
+        action="update",
+        resource_type="production_log",
+        resource_id=str(log.id),
+        changes=updates,
+    )
     return log
 
 
 async def delete_log(db: AsyncSession, log: ProductionLog) -> None:
+    await audit_service.log_action(
+        db,
+        log.tenant_id,
+        user_id=None,
+        action="delete",
+        resource_type="production_log",
+        resource_id=str(log.id),
+        changes={"shift_date": str(log.shift_date)},
+    )
     await db.delete(log)
     await db.flush()
 

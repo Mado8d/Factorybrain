@@ -13,6 +13,7 @@ from core.models.maintenance import (
     PreventiveMaintenanceSchedule,
 )
 from core.schemas.maintenance import PMScheduleCreate, PMScheduleUpdate, WorkOrderCreate
+from core.services import audit_service
 from core.services.pm_templates import get_template
 
 # --- CRUD ---
@@ -79,6 +80,15 @@ async def create_pm_schedule(
         db.add(occ)
         await db.flush()
 
+    await audit_service.log_action(
+        db,
+        tenant_id,
+        user_id=created_by,
+        action="create",
+        resource_type="pm_schedule",
+        resource_id=str(schedule.id),
+        changes={"name": schedule.name, "trigger_type": schedule.trigger_type},
+    )
     return schedule
 
 
@@ -101,6 +111,15 @@ async def update_pm_schedule(
 
     await db.flush()
     await db.refresh(schedule)
+    await audit_service.log_action(
+        db,
+        schedule.tenant_id,
+        user_id=None,
+        action="update",
+        resource_type="pm_schedule",
+        resource_id=str(schedule.id),
+        changes=data.model_dump(exclude_unset=True),
+    )
     return schedule
 
 
@@ -108,6 +127,15 @@ async def delete_pm_schedule(db: AsyncSession, schedule: PreventiveMaintenanceSc
     """Soft delete — deactivate the schedule."""
     schedule.is_active = False
     schedule.updated_at = utcnow()
+    await audit_service.log_action(
+        db,
+        schedule.tenant_id,
+        user_id=None,
+        action="delete",
+        resource_type="pm_schedule",
+        resource_id=str(schedule.id),
+        changes={"name": schedule.name},
+    )
     await db.flush()
 
 

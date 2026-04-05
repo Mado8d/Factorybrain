@@ -9,6 +9,7 @@ from core.auth.routes import hash_password, verify_password
 from core.models.base import utcnow
 from core.models.user import User
 from core.schemas.user import UserCreate, UserProfileUpdate, UserUpdate
+from core.services import audit_service
 
 
 async def list_users(
@@ -63,6 +64,15 @@ async def create_user(
     db.add(user)
     await db.flush()
     await db.refresh(user)
+    await audit_service.log_action(
+        db,
+        tenant_id,
+        user_id=None,
+        action="create",
+        resource_type="user",
+        resource_id=str(user.id),
+        changes={"email": user.email, "name": user.name, "role": user.role},
+    )
     return user
 
 
@@ -84,6 +94,15 @@ async def update_user(
     user.updated_at = utcnow()
     await db.flush()
     await db.refresh(user)
+    await audit_service.log_action(
+        db,
+        user.tenant_id,
+        user_id=user.id,
+        action="update",
+        resource_type="user",
+        resource_id=str(user.id),
+        changes=updates,
+    )
     return user
 
 
@@ -98,6 +117,15 @@ async def update_profile(
     user.updated_at = utcnow()
     await db.flush()
     await db.refresh(user)
+    await audit_service.log_action(
+        db,
+        user.tenant_id,
+        user_id=user.id,
+        action="update",
+        resource_type="user",
+        resource_id=str(user.id),
+        changes=updates,
+    )
     return user
 
 
@@ -112,6 +140,15 @@ async def change_password(
     user.hashed_password = hash_password(new_password)
     user.updated_at = utcnow()
     await db.flush()
+    await audit_service.log_action(
+        db,
+        user.tenant_id,
+        user_id=user.id,
+        action="update",
+        resource_type="user",
+        resource_id=str(user.id),
+        changes={"password": "changed"},
+    )
     return True
 
 
@@ -123,6 +160,15 @@ async def reset_password(
     user.hashed_password = hash_password(new_password)
     user.updated_at = utcnow()
     await db.flush()
+    await audit_service.log_action(
+        db,
+        user.tenant_id,
+        user_id=None,
+        action="update",
+        resource_type="user",
+        resource_id=str(user.id),
+        changes={"password": "reset"},
+    )
 
 
 async def deactivate_user(db: AsyncSession, user: User) -> User:
@@ -130,6 +176,15 @@ async def deactivate_user(db: AsyncSession, user: User) -> User:
     user.updated_at = utcnow()
     await db.flush()
     await db.refresh(user)
+    await audit_service.log_action(
+        db,
+        user.tenant_id,
+        user_id=None,
+        action="delete",
+        resource_type="user",
+        resource_id=str(user.id),
+        changes={"name": user.name, "deactivated": True},
+    )
     return user
 
 
@@ -138,4 +193,13 @@ async def activate_user(db: AsyncSession, user: User) -> User:
     user.updated_at = utcnow()
     await db.flush()
     await db.refresh(user)
+    await audit_service.log_action(
+        db,
+        user.tenant_id,
+        user_id=None,
+        action="update",
+        resource_type="user",
+        resource_id=str(user.id),
+        changes={"name": user.name, "activated": True},
+    )
     return user

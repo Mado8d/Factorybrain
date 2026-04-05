@@ -19,6 +19,7 @@ from core.schemas.maintenance import (
     WorkOrderCreate,
     WorkOrderUpdate,
 )
+from core.services import audit_service
 
 # --- Alerts ---
 
@@ -44,6 +45,15 @@ async def create_alert(db: AsyncSession, tenant_id: uuid.UUID, data: AlertCreate
     db.add(alert)
     await db.flush()
     await db.refresh(alert)
+    await audit_service.log_action(
+        db,
+        tenant_id,
+        user_id=None,
+        action="create",
+        resource_type="alert",
+        resource_id=str(alert.id),
+        changes={"alert_type": alert.alert_type, "severity": alert.severity},
+    )
     return alert
 
 
@@ -57,6 +67,15 @@ async def update_alert(db: AsyncSession, alert: MaintenanceAlert, data: AlertUpd
         setattr(alert, field, value)
     await db.flush()
     await db.refresh(alert)
+    await audit_service.log_action(
+        db,
+        alert.tenant_id,
+        user_id=None,
+        action="update",
+        resource_type="alert",
+        resource_id=str(alert.id),
+        changes=updates,
+    )
     return alert
 
 
@@ -101,6 +120,15 @@ async def create_work_order(db: AsyncSession, tenant_id: uuid.UUID, data: WorkOr
     db.add(wo)
     await db.flush()
     await db.refresh(wo)
+    await audit_service.log_action(
+        db,
+        tenant_id,
+        user_id=None,
+        action="create",
+        resource_type="work_order",
+        resource_id=str(wo.id),
+        changes={"title": wo.title, "status": wo.status, "wo_number": wo.wo_number},
+    )
     return wo
 
 
@@ -129,6 +157,15 @@ async def update_work_order(db: AsyncSession, wo: MaintenanceWorkOrder, data: Wo
     if wo.status == "completed" and wo.parts_used:
         await _deduct_parts(db, wo.parts_used)
 
+    await audit_service.log_action(
+        db,
+        wo.tenant_id,
+        user_id=None,
+        action="update",
+        resource_type="work_order",
+        resource_id=str(wo.id),
+        changes=updates,
+    )
     return wo
 
 
@@ -179,6 +216,15 @@ async def create_service_provider(
     db.add(provider)
     await db.flush()
     await db.refresh(provider)
+    await audit_service.log_action(
+        db,
+        tenant_id,
+        user_id=None,
+        action="create",
+        resource_type="service_provider",
+        resource_id=str(provider.id),
+        changes={"company_name": provider.company_name},
+    )
     return provider
 
 
@@ -202,15 +248,34 @@ async def create_spare_part(db: AsyncSession, tenant_id: uuid.UUID, data) -> Spa
     db.add(part)
     await db.flush()
     await db.refresh(part)
+    await audit_service.log_action(
+        db,
+        tenant_id,
+        user_id=None,
+        action="create",
+        resource_type="spare_part",
+        resource_id=str(part.id),
+        changes={"name": part.name},
+    )
     return part
 
 
 async def update_spare_part(db: AsyncSession, part: SparePart, data) -> SparePart:
-    for field, value in data.model_dump(exclude_unset=True).items():
+    updates = data.model_dump(exclude_unset=True)
+    for field, value in updates.items():
         setattr(part, field, value)
     part.updated_at = utcnow()
     await db.flush()
     await db.refresh(part)
+    await audit_service.log_action(
+        db,
+        part.tenant_id,
+        user_id=None,
+        action="update",
+        resource_type="spare_part",
+        resource_id=str(part.id),
+        changes=updates,
+    )
     return part
 
 
@@ -218,3 +283,12 @@ async def delete_spare_part(db: AsyncSession, part: SparePart) -> None:
     part.is_active = False
     part.updated_at = utcnow()
     await db.flush()
+    await audit_service.log_action(
+        db,
+        part.tenant_id,
+        user_id=None,
+        action="delete",
+        resource_type="spare_part",
+        resource_id=str(part.id),
+        changes={"name": part.name},
+    )

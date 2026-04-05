@@ -40,6 +40,7 @@ class HandoverResponse(BaseModel):
     active_work_orders: list = []
     active_alerts: list = []
     sensor_anomalies: list = []
+    shift_activity: dict = {}
     events: list = []
     open_items: list = []
     safety_notes: str | None = None

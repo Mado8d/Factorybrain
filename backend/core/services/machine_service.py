@@ -10,6 +10,7 @@ from core.models.base import utcnow
 from core.models.machine import Machine
 from core.models.sensor_reading import SensorReading
 from core.schemas.machine import MachineCreate, MachineUpdate
+from core.services import audit_service
 
 
 async def list_machines(db: AsyncSession, limit: int = 100, offset: int = 0) -> list[Machine]:
@@ -27,21 +28,52 @@ async def create_machine(db: AsyncSession, tenant_id: uuid.UUID, data: MachineCr
     db.add(machine)
     await db.flush()
     await db.refresh(machine)
+    await audit_service.log_action(
+        db,
+        tenant_id,
+        user_id=None,
+        action="create",
+        resource_type="machine",
+        resource_id=str(machine.id),
+        changes={"name": machine.name},
+    )
     return machine
 
 
 async def update_machine(db: AsyncSession, machine: Machine, data: MachineUpdate) -> Machine:
-    for field, value in data.model_dump(exclude_unset=True).items():
+    updates = data.model_dump(exclude_unset=True)
+    for field, value in updates.items():
         setattr(machine, field, value)
     machine.updated_at = utcnow()
     await db.flush()
     await db.refresh(machine)
+    await audit_service.log_action(
+        db,
+        machine.tenant_id,
+        user_id=None,
+        action="update",
+        resource_type="machine",
+        resource_id=str(machine.id),
+        changes=updates,
+    )
     return machine
 
 
 async def delete_machine(db: AsyncSession, machine: Machine) -> None:
+    tenant_id = machine.tenant_id
+    machine_id = str(machine.id)
+    machine_name = machine.name
     await db.delete(machine)
     await db.flush()
+    await audit_service.log_action(
+        db,
+        tenant_id,
+        user_id=None,
+        action="delete",
+        resource_type="machine",
+        resource_id=machine_id,
+        changes={"name": machine_name},
+    )
 
 
 async def get_machine_telemetry(db: AsyncSession, machine_id: uuid.UUID, hours: int = 24) -> list:

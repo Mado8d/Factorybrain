@@ -30,6 +30,7 @@ class ShiftHandover(Base):
     active_work_orders: Mapped[list] = mapped_column(JSONB, server_default="[]")
     active_alerts: Mapped[list] = mapped_column(JSONB, server_default="[]")
     sensor_anomalies: Mapped[list] = mapped_column(JSONB, server_default="[]")
+    shift_activity: Mapped[dict] = mapped_column(JSONB, server_default="{}")
 
     # Manual entries
     events: Mapped[list] = mapped_column(JSONB, server_default="[]")

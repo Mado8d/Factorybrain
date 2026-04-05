@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.models.base import utcnow
 from core.models.loto import LOTOPermit, LOTOProcedure
+from core.services import audit_service
 
 # --- Procedures ---
 
@@ -29,6 +30,15 @@ async def create_procedure(db: AsyncSession, tenant_id: uuid.UUID, data: dict) -
     db.add(procedure)
     await db.flush()
     await db.refresh(procedure)
+    await audit_service.log_action(
+        db,
+        tenant_id,
+        user_id=None,
+        action="create",
+        resource_type="loto_procedure",
+        resource_id=str(procedure.id),
+        changes={"name": procedure.name},
+    )
     return procedure
 
 
@@ -86,6 +96,15 @@ async def create_permit(
     db.add(permit)
     await db.flush()
     await db.refresh(permit)
+    await audit_service.log_action(
+        db,
+        tenant_id,
+        user_id=user_id,
+        action="create",
+        resource_type="loto_permit",
+        resource_id=str(permit.id),
+        changes={"work_order_id": str(work_order_id), "status": "draft"},
+    )
     return permit
 
 
@@ -107,6 +126,15 @@ async def authorize_permit(db: AsyncSession, permit: LOTOPermit, authorizer_id: 
     permit.status = "active"
     await db.flush()
     await db.refresh(permit)
+    await audit_service.log_action(
+        db,
+        permit.tenant_id,
+        user_id=authorizer_id,
+        action="update",
+        resource_type="loto_permit",
+        resource_id=str(permit.id),
+        changes={"status": "active", "authorized_by": str(authorizer_id)},
+    )
     return permit
 
 

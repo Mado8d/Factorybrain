@@ -12,6 +12,7 @@ from core.schemas.plant import (
     ProductionLineCreate,
     ProductionLineUpdate,
 )
+from core.services import audit_service
 
 # --- Plants ---
 
@@ -31,20 +32,51 @@ async def create_plant(db: AsyncSession, tenant_id: uuid.UUID, data: PlantCreate
     db.add(plant)
     await db.flush()
     await db.refresh(plant)
+    await audit_service.log_action(
+        db,
+        tenant_id,
+        user_id=None,
+        action="create",
+        resource_type="plant",
+        resource_id=str(plant.id),
+        changes={"name": plant.name},
+    )
     return plant
 
 
 async def update_plant(db: AsyncSession, plant: Plant, data: PlantUpdate) -> Plant:
-    for field, value in data.model_dump(exclude_unset=True).items():
+    updates = data.model_dump(exclude_unset=True)
+    for field, value in updates.items():
         setattr(plant, field, value)
     await db.flush()
     await db.refresh(plant)
+    await audit_service.log_action(
+        db,
+        plant.tenant_id,
+        user_id=None,
+        action="update",
+        resource_type="plant",
+        resource_id=str(plant.id),
+        changes=updates,
+    )
     return plant
 
 
 async def delete_plant(db: AsyncSession, plant: Plant) -> None:
+    tenant_id = plant.tenant_id
+    plant_id = str(plant.id)
+    plant_name = plant.name
     await db.delete(plant)
     await db.flush()
+    await audit_service.log_action(
+        db,
+        tenant_id,
+        user_id=None,
+        action="delete",
+        resource_type="plant",
+        resource_id=plant_id,
+        changes={"name": plant_name},
+    )
 
 
 # --- Production Lines ---
@@ -62,12 +94,31 @@ async def create_production_line(db: AsyncSession, tenant_id: uuid.UUID, data: P
     db.add(line)
     await db.flush()
     await db.refresh(line)
+    await audit_service.log_action(
+        db,
+        tenant_id,
+        user_id=None,
+        action="create",
+        resource_type="production_line",
+        resource_id=str(line.id),
+        changes={"name": line.name},
+    )
     return line
 
 
 async def update_production_line(db: AsyncSession, line: ProductionLine, data: ProductionLineUpdate) -> ProductionLine:
-    for field, value in data.model_dump(exclude_unset=True).items():
+    updates = data.model_dump(exclude_unset=True)
+    for field, value in updates.items():
         setattr(line, field, value)
     await db.flush()
     await db.refresh(line)
+    await audit_service.log_action(
+        db,
+        line.tenant_id,
+        user_id=None,
+        action="update",
+        resource_type="production_line",
+        resource_id=str(line.id),
+        changes=updates,
+    )
     return line

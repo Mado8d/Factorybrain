@@ -9,6 +9,7 @@ from core.models.base import utcnow
 from core.models.tenant import Tenant
 from core.models.work_request import WorkRequest
 from core.schemas.work_request import WorkRequestCreate
+from core.services import audit_service
 from core.services.event_service import create_system_event
 
 
@@ -56,6 +57,15 @@ async def create_request(
     db.add(req)
     await db.flush()
     await db.refresh(req)
+    await audit_service.log_action(
+        db,
+        tenant_id,
+        user_id=None,
+        action="create",
+        resource_type="work_request",
+        resource_id=str(req.id),
+        changes={"title": req.title, "urgency": req.urgency},
+    )
     return req
 
 
@@ -97,6 +107,15 @@ async def approve_request(
         user_id=reviewer_id,
     )
 
+    await audit_service.log_action(
+        db,
+        request.tenant_id,
+        user_id=reviewer_id,
+        action="update",
+        resource_type="work_request",
+        resource_id=str(request.id),
+        changes={"status": "approved", "work_order_id": str(wo.id)},
+    )
     return request
 
 
@@ -112,6 +131,15 @@ async def reject_request(
     request.review_notes = reason
     await db.flush()
     await db.refresh(request)
+    await audit_service.log_action(
+        db,
+        request.tenant_id,
+        user_id=reviewer_id,
+        action="update",
+        resource_type="work_request",
+        resource_id=str(request.id),
+        changes={"status": "rejected", "reason": reason},
+    )
     return request
 
 
@@ -127,6 +155,15 @@ async def mark_duplicate(
     request.work_order_id = existing_wo_id
     await db.flush()
     await db.refresh(request)
+    await audit_service.log_action(
+        db,
+        request.tenant_id,
+        user_id=reviewer_id,
+        action="update",
+        resource_type="work_request",
+        resource_id=str(request.id),
+        changes={"status": "duplicate"},
+    )
     return request
 
 
