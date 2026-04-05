@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/store/auth';
-import { Plus, Pencil, Trash2, Barcode, Printer, Search, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Database, ImageIcon, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, Barcode, Printer, Search, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Database, ImageIcon, X, ClipboardCheck, ClipboardList } from 'lucide-react';
 import Barcode128 from 'react-barcode';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -70,6 +70,15 @@ export default function PartsPage() {
 
   // Seed state
   const [seeding, setSeeding] = useState(false);
+
+  // Stock Check state
+  const [stockCheckPrintOpen, setStockCheckPrintOpen] = useState(false);
+  const [stockCheckCountOpen, setStockCheckCountOpen] = useState(false);
+  const [stockCheckCategory, setStockCheckCategory] = useState('All');
+  const [stockCheckLocation, setStockCheckLocation] = useState('All');
+  const [stockCounts, setStockCounts] = useState<Record<string, string>>({});
+  const [stockCountSubmitting, setStockCountSubmitting] = useState(false);
+  const [newPartsFound, setNewPartsFound] = useState<{ name: string; part_number: string; location: string; count: string; notes: string }[]>([]);
 
   const handlePrintBarcode = () => {
     const el = document.getElementById('barcode-print-area');
@@ -242,6 +251,147 @@ export default function PartsPage() {
     } finally { setSeeding(false); }
   };
 
+  // --- Stock Check helpers ---
+
+  const stockCheckFilteredParts = useMemo(() => {
+    let result = [...parts];
+    if (stockCheckCategory !== 'All') result = result.filter(p => p.category === stockCheckCategory);
+    if (stockCheckLocation !== 'All') result = result.filter(p => p.location === stockCheckLocation);
+    return result.sort((a, b) => (a.location || '').localeCompare(b.location || '') || (a.name || '').localeCompare(b.name || ''));
+  }, [parts, stockCheckCategory, stockCheckLocation]);
+
+  const uniqueLocations = useMemo(() => {
+    const locs = new Set(parts.map(p => p.location).filter(Boolean) as string[]);
+    return ['All', ...Array.from(locs).sort()];
+  }, [parts]);
+
+  const handlePrintStockCheckList = () => {
+    const rows = stockCheckFilteredParts.map(p =>
+      `<tr>
+        <td>${p.location || '\u2014'}</td>
+        <td>${p.part_number || '\u2014'}</td>
+        <td>${p.name}</td>
+        <td style="text-align:center">${p.quantity_in_stock}</td>
+        <td></td>
+        <td></td>
+      </tr>`
+    ).join('');
+
+    const emptyRows = Array.from({ length: 8 }, () =>
+      `<tr><td></td><td></td><td></td><td></td><td></td></tr>`
+    ).join('');
+
+    const html = `
+      <html><head><title>Stock Check List</title>
+      <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: Arial, sans-serif; color: #000; background: #fff; padding: 20px; font-size: 11px; }
+        h1 { font-size: 16px; margin-bottom: 4px; }
+        .meta { margin-bottom: 16px; font-size: 12px; }
+        .meta span { display: inline-block; margin-right: 30px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+        th, td { border: 1px solid #333; padding: 4px 6px; text-align: left; }
+        th { background: #eee; font-weight: bold; font-size: 10px; text-transform: uppercase; }
+        td:nth-child(4), td:nth-child(5) { text-align: center; width: 80px; }
+        td:nth-child(6) { width: 120px; }
+        .new-section h2 { font-size: 13px; margin-bottom: 8px; }
+        .new-section td { height: 24px; }
+        @media print { body { padding: 10px; } }
+      </style></head><body>
+      <h1>STOCK CHECK LIST &mdash; FactoryBrain</h1>
+      <div class="meta">
+        <span>Date: ___/___/2026</span>
+        <span>Checked by: _______________________</span>
+        ${stockCheckCategory !== 'All' ? `<span>Category: ${stockCheckCategory}</span>` : ''}
+        ${stockCheckLocation !== 'All' ? `<span>Location: ${stockCheckLocation}</span>` : ''}
+      </div>
+      <table>
+        <thead><tr><th>Location</th><th>Part #</th><th>Name</th><th>Expected</th><th>Actual Count</th><th>Notes</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div class="new-section">
+        <h2>New parts found (not in system):</h2>
+        <table>
+          <thead><tr><th>Part Name</th><th>Part #</th><th>Location</th><th>Count</th><th>Notes</th></tr></thead>
+          <tbody>${emptyRows}</tbody>
+        </table>
+      </div>
+      <script>window.onload=function(){window.print()}</script>
+      </body></html>
+    `;
+    const win = window.open('', '_blank', 'width=900,height=700');
+    if (!win) return;
+    win.document.write(html);
+    win.document.close();
+    setStockCheckPrintOpen(false);
+  };
+
+  const openStockCountDialog = () => {
+    const counts: Record<string, string> = {};
+    parts.forEach(p => { counts[p.id] = ''; });
+    setStockCounts(counts);
+    setNewPartsFound([]);
+    setStockCheckCountOpen(true);
+  };
+
+  const getDiscrepancy = (part: SparePart): { value: number; label: string; color: string } | null => {
+    const countStr = stockCounts[part.id];
+    if (countStr === '' || countStr === undefined) return null;
+    const actual = parseInt(countStr);
+    if (isNaN(actual)) return null;
+    const diff = actual - part.quantity_in_stock;
+    if (diff === 0) return { value: 0, label: 'Match', color: 'text-green-400' };
+    return { value: diff, label: diff > 0 ? `+${diff}` : `${diff}`, color: 'text-red-400' };
+  };
+
+  const handleApplyStockCounts = async () => {
+    setStockCountSubmitting(true);
+    try {
+      let updated = 0;
+      for (const part of parts) {
+        const countStr = stockCounts[part.id];
+        if (countStr === '' || countStr === undefined) continue;
+        const actual = parseInt(countStr);
+        if (isNaN(actual)) continue;
+        if (actual !== part.quantity_in_stock) {
+          await api.updateSparePart(part.id, { quantity_in_stock: actual });
+          updated++;
+        }
+      }
+      // Add new parts found
+      for (const np of newPartsFound) {
+        if (!np.name.trim()) continue;
+        await api.createSparePart({
+          name: np.name.trim(),
+          part_number: np.part_number.trim() || undefined,
+          location: np.location.trim() || undefined,
+          quantity_in_stock: parseInt(np.count) || 0,
+          min_stock_level: 1,
+        } as any);
+        updated++;
+      }
+      setStockCheckCountOpen(false);
+      await loadParts();
+      showFeedback(`Stock check applied: ${updated} item(s) updated`);
+    } catch (err: any) {
+      showFeedback(err.message || 'Failed to apply counts');
+    } finally {
+      setStockCountSubmitting(false);
+    }
+  };
+
+  const addNewPartRow = () => {
+    setNewPartsFound(prev => [...prev, { name: '', part_number: '', location: '', count: '', notes: '' }]);
+  };
+
+  const updateNewPart = (index: number, field: string, value: string) => {
+    setNewPartsFound(prev => prev.map((p, i) => i === index ? { ...p, [field]: value } : p));
+  };
+
+  const removeNewPart = (index: number) => {
+    setNewPartsFound(prev => prev.filter((_, i) => i !== index));
+  };
+
   const stockColor = (part: SparePart) => {
     if (part.quantity_in_stock === 0) return 'text-red-400';
     if (part.quantity_in_stock <= part.min_stock_level) return 'text-amber-400';
@@ -278,6 +428,16 @@ export default function PartsPage() {
           {isAdmin && (
             <Button size="sm" variant="outline" onClick={handleSeedDemo} disabled={seeding} className="text-xs h-7 px-2">
               <Database className="h-3 w-3 mr-1" />{seeding ? 'Seeding...' : 'Seed Demo'}
+            </Button>
+          )}
+          {isAdmin && (
+            <Button size="sm" variant="outline" onClick={() => setStockCheckPrintOpen(true)} className="text-xs h-8">
+              <ClipboardList className="h-3.5 w-3.5 mr-1" /> Stock Check
+            </Button>
+          )}
+          {isAdmin && (
+            <Button size="sm" variant="outline" onClick={openStockCountDialog} className="text-xs h-8">
+              <ClipboardCheck className="h-3.5 w-3.5 mr-1" /> Enter Stock Count
             </Button>
           )}
           {isAdmin && (
@@ -537,6 +697,149 @@ export default function PartsPage() {
           <DialogFooter className="justify-center">
             <Button size="sm" onClick={handlePrintBarcode}>
               <Printer className="h-3.5 w-3.5 mr-1" /> Print Label
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Stock Check Print Dialog */}
+      <Dialog open={stockCheckPrintOpen} onOpenChange={setStockCheckPrintOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Generate Printable Stock Check List</DialogTitle>
+            <DialogDescription>Filter by category or location, then generate a printable checklist for physical inventory count.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Category</Label>
+              <select
+                value={stockCheckCategory}
+                onChange={e => setStockCheckCategory(e.target.value)}
+                className="w-full mt-1 h-9 text-sm bg-secondary border border-border rounded-md px-2 text-foreground focus:outline-none focus:ring-1 focus:ring-brand-500"
+              >
+                {CATEGORIES.map(c => <option key={c} value={c}>{c === 'All' ? 'All Categories' : c}</option>)}
+              </select>
+            </div>
+            <div>
+              <Label>Location</Label>
+              <select
+                value={stockCheckLocation}
+                onChange={e => setStockCheckLocation(e.target.value)}
+                className="w-full mt-1 h-9 text-sm bg-secondary border border-border rounded-md px-2 text-foreground focus:outline-none focus:ring-1 focus:ring-brand-500"
+              >
+                {uniqueLocations.map(l => <option key={l} value={l}>{l === 'All' ? 'All Locations' : l}</option>)}
+              </select>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {stockCheckFilteredParts.length} part{stockCheckFilteredParts.length !== 1 ? 's' : ''} will be included in the checklist.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setStockCheckPrintOpen(false)}>Cancel</Button>
+            <Button onClick={handlePrintStockCheckList} disabled={stockCheckFilteredParts.length === 0}>
+              <Printer className="h-3.5 w-3.5 mr-1" /> Generate & Print
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Stock Count Entry Dialog */}
+      <Dialog open={stockCheckCountOpen} onOpenChange={setStockCheckCountOpen}>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Enter Stock Count</DialogTitle>
+            <DialogDescription>Enter actual counted quantities. Discrepancies are highlighted automatically.</DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto min-h-0">
+            <table className="w-full border-collapse">
+              <thead className="sticky top-0 bg-card z-10">
+                <tr className="border-b border-border bg-secondary/50">
+                  <th className="text-left text-xs font-medium text-muted-foreground px-2 py-2">Part #</th>
+                  <th className="text-left text-xs font-medium text-muted-foreground px-2 py-2">Name</th>
+                  <th className="text-left text-xs font-medium text-muted-foreground px-2 py-2 hidden md:table-cell">Location</th>
+                  <th className="text-center text-xs font-medium text-muted-foreground px-2 py-2 w-20">System</th>
+                  <th className="text-center text-xs font-medium text-muted-foreground px-2 py-2 w-24">Actual</th>
+                  <th className="text-center text-xs font-medium text-muted-foreground px-2 py-2 w-24">Discrepancy</th>
+                </tr>
+              </thead>
+              <tbody>
+                {parts.map(part => {
+                  const disc = getDiscrepancy(part);
+                  return (
+                    <tr key={part.id} className="border-b border-border last:border-0 hover:bg-secondary/30">
+                      <td className="px-2 py-1 text-xs font-mono text-muted-foreground">{part.part_number || '\u2014'}</td>
+                      <td className="px-2 py-1 text-sm text-foreground">{part.name}</td>
+                      <td className="px-2 py-1 text-xs text-muted-foreground hidden md:table-cell">{part.location || '\u2014'}</td>
+                      <td className="px-2 py-1 text-center text-sm text-foreground">{part.quantity_in_stock}</td>
+                      <td className="px-2 py-1">
+                        <Input
+                          type="number"
+                          min={0}
+                          value={stockCounts[part.id] || ''}
+                          onChange={e => setStockCounts(prev => ({ ...prev, [part.id]: e.target.value }))}
+                          placeholder="\u2014"
+                          className="h-7 text-xs text-center w-20 mx-auto"
+                        />
+                      </td>
+                      <td className="px-2 py-1 text-center">
+                        {disc ? (
+                          <span className={`text-xs font-semibold ${disc.color}`}>{disc.label}</span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">\u2014</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+
+            {/* New Parts Found section */}
+            <div className="mt-6 border-t border-border pt-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-foreground">Add New Parts Found</h3>
+                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={addNewPartRow}>
+                  <Plus className="h-3 w-3 mr-1" /> Add Row
+                </Button>
+              </div>
+              {newPartsFound.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No new parts to add. Click &quot;Add Row&quot; if you found parts not in the system.</p>
+              ) : (
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="border-b border-border bg-secondary/50">
+                      <th className="text-left text-xs font-medium text-muted-foreground px-2 py-1.5">Name</th>
+                      <th className="text-left text-xs font-medium text-muted-foreground px-2 py-1.5">Part #</th>
+                      <th className="text-left text-xs font-medium text-muted-foreground px-2 py-1.5">Location</th>
+                      <th className="text-center text-xs font-medium text-muted-foreground px-2 py-1.5 w-20">Count</th>
+                      <th className="text-left text-xs font-medium text-muted-foreground px-2 py-1.5">Notes</th>
+                      <th className="w-8"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {newPartsFound.map((np, i) => (
+                      <tr key={i} className="border-b border-border last:border-0">
+                        <td className="px-2 py-1"><Input value={np.name} onChange={e => updateNewPart(i, 'name', e.target.value)} placeholder="Part name" className="h-7 text-xs" /></td>
+                        <td className="px-2 py-1"><Input value={np.part_number} onChange={e => updateNewPart(i, 'part_number', e.target.value)} placeholder="Part #" className="h-7 text-xs" /></td>
+                        <td className="px-2 py-1"><Input value={np.location} onChange={e => updateNewPart(i, 'location', e.target.value)} placeholder="Location" className="h-7 text-xs" /></td>
+                        <td className="px-2 py-1"><Input type="number" min={0} value={np.count} onChange={e => updateNewPart(i, 'count', e.target.value)} placeholder="0" className="h-7 text-xs text-center" /></td>
+                        <td className="px-2 py-1"><Input value={np.notes} onChange={e => updateNewPart(i, 'notes', e.target.value)} placeholder="Notes" className="h-7 text-xs" /></td>
+                        <td className="px-2 py-1">
+                          <button onClick={() => removeNewPart(i)} className="p-0.5 rounded hover:bg-secondary text-red-400/70 hover:text-red-400 transition-colors">
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+          <DialogFooter className="border-t border-border pt-3">
+            <Button variant="outline" onClick={() => setStockCheckCountOpen(false)}>Cancel</Button>
+            <Button onClick={handleApplyStockCounts} disabled={stockCountSubmitting}>
+              {stockCountSubmitting ? 'Applying...' : 'Apply Counts'}
             </Button>
           </DialogFooter>
         </DialogContent>

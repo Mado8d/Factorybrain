@@ -32,6 +32,7 @@ import {
   Tag,
   Cpu,
   CheckSquare,
+  RotateCw,
 } from 'lucide-react';
 
 // --- Types ---
@@ -406,12 +407,41 @@ export default function WorkOrderDetailPage() {
                 {getMachineName(wo.machine_id)}
               </button>
 
-              {/* Trigger */}
+              {/* Trigger type — Planned vs Unplanned */}
               {wo.trigger_type && (
-                <span className="text-xs text-muted-foreground">
-                  {wo.trigger_type === 'alert-driven' && <AlertTriangle className="h-3 w-3 inline mr-0.5 text-amber-400" />}
-                  {TRIGGER_LABELS[wo.trigger_type] || wo.trigger_type}
-                </span>
+                <>
+                  {(wo.trigger_type === 'pm-scheduled' || wo.trigger_type === 'preventive' || wo.trigger_type === 'pm') ? (
+                    <Badge variant="success" className="text-[10px] px-1.5 py-0.5">
+                      <Calendar className="h-3 w-3 mr-0.5" />
+                      Planned - Preventive
+                    </Badge>
+                  ) : (
+                    <Badge variant="warning" className="text-[10px] px-1.5 py-0.5">
+                      <AlertTriangle className="h-3 w-3 mr-0.5" />
+                      Unplanned - Corrective
+                    </Badge>
+                  )}
+
+                  {/* Sub-badges for specific trigger types */}
+                  {(wo.trigger_type === 'pm-scheduled' || wo.trigger_type === 'pm') && (
+                    <Badge variant="default" className="text-[10px] px-1.5 py-0.5">
+                      <RotateCw className="h-3 w-3 mr-0.5" />
+                      Recurring
+                    </Badge>
+                  )}
+                  {wo.trigger_type === 'alert-driven' && (
+                    <Badge variant="destructive" className="text-[10px] px-1.5 py-0.5">
+                      <AlertTriangle className="h-3 w-3 mr-0.5" />
+                      From Alert
+                    </Badge>
+                  )}
+                  {wo.trigger_type === 'request' && (
+                    <Badge variant="info" className="text-[10px] px-1.5 py-0.5">
+                      <User className="h-3 w-3 mr-0.5" />
+                      From Request
+                    </Badge>
+                  )}
+                </>
               )}
 
               {/* Created date */}
@@ -656,10 +686,16 @@ export default function WorkOrderDetailPage() {
             {/* Trigger */}
             <div>
               <Label className="text-xs text-muted-foreground">Trigger</Label>
-              <p className="text-sm text-foreground mt-1">
-                {wo.trigger_type === 'alert-driven' && <AlertTriangle className="h-3.5 w-3.5 inline mr-1 text-amber-400" />}
-                {TRIGGER_LABELS[wo.trigger_type] || wo.trigger_type}
-              </p>
+              <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                {(wo.trigger_type === 'pm-scheduled' || wo.trigger_type === 'preventive' || wo.trigger_type === 'pm') ? (
+                  <Badge variant="success" className="text-[10px] px-1.5 py-0.5">Preventive</Badge>
+                ) : (
+                  <Badge variant="warning" className="text-[10px] px-1.5 py-0.5">Corrective</Badge>
+                )}
+                <span className="text-sm text-foreground">
+                  {TRIGGER_LABELS[wo.trigger_type] || wo.trigger_type}
+                </span>
+              </div>
             </div>
 
             {/* Created */}

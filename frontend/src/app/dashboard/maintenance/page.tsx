@@ -540,9 +540,14 @@ export default function MaintenancePage() {
                   </div>
                   {/* Machine */}
                   <span className="text-sm text-muted-foreground truncate">{getMachineName(wo.machine_id)}</span>
-                  {/* Priority */}
-                  <div>
+                  {/* Priority + Trigger Type */}
+                  <div className="flex items-center gap-1 flex-wrap">
                     <Badge variant={priorityVariant[wo.priority] || 'info'} className="text-[10px] px-1.5 py-0.5">{wo.priority}</Badge>
+                    {(wo.trigger_type === 'pm-scheduled' || wo.trigger_type === 'preventive' || wo.trigger_type === 'pm') ? (
+                      <Badge variant="success" className="text-[10px] px-1.5 py-0.5">Preventive</Badge>
+                    ) : (wo.trigger_type === 'manual' || wo.trigger_type === 'alert-driven' || wo.trigger_type === 'request') ? (
+                      <Badge variant="warning" className="text-[10px] px-1.5 py-0.5">Corrective</Badge>
+                    ) : null}
                   </div>
                   {/* Status */}
                   <div>
