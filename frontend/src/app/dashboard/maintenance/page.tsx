@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/store/auth';
-import { Plus, ArrowRight, CheckCircle, AlertTriangle, CalendarCheck, Clock, RotateCcw } from 'lucide-react';
+import { Plus, ArrowRight, CheckCircle, AlertTriangle, CalendarCheck, Clock, RotateCcw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -63,6 +63,14 @@ const statusLabels: Record<string, string> = {
   in_progress: 'In Progress', completed: 'Completed',
 };
 
+const ITEMS_PER_PAGE = 25;
+
+const severityDotColor: Record<string, string> = {
+  critical: 'bg-red-500',
+  warning: 'bg-amber-500',
+  info: 'bg-blue-500',
+};
+
 export default function MaintenancePage() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin' || user?.role === 'manager';
@@ -96,6 +104,23 @@ export default function MaintenancePage() {
   const [editWorkPerformed, setEditWorkPerformed] = useState('');
   const [editRootCause, setEditRootCause] = useState('');
   const [editChecklist, setEditChecklist] = useState<{ step: string; required: boolean; completed: boolean }[]>([]);
+
+  // Filter state — Alerts
+  const [alertStatusFilter, setAlertStatusFilter] = useState('all');
+  const [alertSeverityFilter, setAlertSeverityFilter] = useState('all');
+  const [alertMachineFilter, setAlertMachineFilter] = useState('all');
+  const [alertPage, setAlertPage] = useState(1);
+
+  // Filter state — Work Orders
+  const [woStatusFilter, setWoStatusFilter] = useState('all');
+  const [woPriorityFilter, setWoPriorityFilter] = useState('all');
+  const [woMachineFilter, setWoMachineFilter] = useState('all');
+  const [woPage, setWoPage] = useState(1);
+
+  // Filter state — PM Schedules
+  const [pmMachineFilter, setPmMachineFilter] = useState('all');
+  const [pmOverdueOnly, setPmOverdueOnly] = useState(false);
+  const [pmPage, setPmPage] = useState(1);
 
   const showFeedback = (msg: string) => {
     setFeedback(msg);
@@ -224,9 +249,93 @@ export default function MaintenancePage() {
     }
   };
 
+  // --- Filtered & paginated data ---
+
+  const filteredAlerts = useMemo(() => {
+    let result = alerts;
+    if (alertStatusFilter !== 'all') result = result.filter(a => a.status === alertStatusFilter);
+    if (alertSeverityFilter !== 'all') result = result.filter(a => a.severity === alertSeverityFilter);
+    if (alertMachineFilter !== 'all') result = result.filter(a => a.machine_id === alertMachineFilter);
+    return result;
+  }, [alerts, alertStatusFilter, alertSeverityFilter, alertMachineFilter]);
+
+  const filteredWorkOrders = useMemo(() => {
+    let result = workOrders;
+    if (woStatusFilter !== 'all') result = result.filter(w => w.status === woStatusFilter);
+    if (woPriorityFilter !== 'all') result = result.filter(w => w.priority === woPriorityFilter);
+    if (woMachineFilter !== 'all') result = result.filter(w => w.machine_id === woMachineFilter);
+    return result;
+  }, [workOrders, woStatusFilter, woPriorityFilter, woMachineFilter]);
+
+  const filteredPmSchedules = useMemo(() => {
+    let result = pmSchedules;
+    if (pmMachineFilter !== 'all') result = result.filter((p: any) => p.machine_id === pmMachineFilter);
+    if (pmOverdueOnly) result = result.filter((p: any) => p.next_due_date && new Date(p.next_due_date) < new Date());
+    return result;
+  }, [pmSchedules, pmMachineFilter, pmOverdueOnly]);
+
+  // Reset page when filters change
+  useEffect(() => { setAlertPage(1); }, [alertStatusFilter, alertSeverityFilter, alertMachineFilter]);
+  useEffect(() => { setWoPage(1); }, [woStatusFilter, woPriorityFilter, woMachineFilter]);
+  useEffect(() => { setPmPage(1); }, [pmMachineFilter, pmOverdueOnly]);
+
+  const paginate = <T,>(items: T[], page: number) => {
+    const start = (page - 1) * ITEMS_PER_PAGE;
+    return items.slice(start, start + ITEMS_PER_PAGE);
+  };
+
+  const paginatedAlerts = paginate(filteredAlerts, alertPage);
+  const paginatedWorkOrders = paginate(filteredWorkOrders, woPage);
+  const paginatedPmSchedules = paginate(filteredPmSchedules, pmPage);
+
   if (loading) return <div className="flex items-center justify-center h-64"><div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-brand-600 border-r-transparent" /></div>;
 
   const openAlerts = alerts.filter((a) => a.status === 'open').length;
+
+  // Pagination component
+  const Pagination = ({ total, page, setPage }: { total: number; page: number; setPage: (p: number) => void }) => {
+    const totalPages = Math.max(1, Math.ceil(total / ITEMS_PER_PAGE));
+    const start = (page - 1) * ITEMS_PER_PAGE + 1;
+    const end = Math.min(page * ITEMS_PER_PAGE, total);
+    if (total === 0) return null;
+    return (
+      <div className="flex items-center justify-between pt-3 border-t border-border mt-1">
+        <span className="text-xs text-muted-foreground">
+          Showing {start}-{end} of {total}
+        </span>
+        <div className="flex items-center gap-1">
+          <Button size="sm" variant="outline" className="h-7 text-xs px-2" disabled={page <= 1} onClick={() => setPage(page - 1)}>
+            <ChevronLeft className="h-3.5 w-3.5 mr-0.5" /> Previous
+          </Button>
+          <Button size="sm" variant="outline" className="h-7 text-xs px-2" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
+            Next <ChevronRight className="h-3.5 w-3.5 ml-0.5" />
+          </Button>
+        </div>
+      </div>
+    );
+  };
+
+  // Filter bar wrapper
+  const FilterBar = ({ children }: { children: React.ReactNode }) => (
+    <div className="flex flex-wrap items-center gap-2 mb-3 p-2.5 bg-card rounded-lg border border-border">
+      {children}
+    </div>
+  );
+
+  // Small inline select for filters
+  const FilterSelect = ({ value, onValueChange, placeholder, children }: { value: string; onValueChange: (v: string) => void; placeholder: string; children: React.ReactNode }) => (
+    <Select value={value} onValueChange={onValueChange}>
+      <SelectTrigger className="h-8 w-[150px] text-xs">
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent>{children}</SelectContent>
+    </Select>
+  );
+
+  // Machine options for filter dropdowns
+  const machineFilterOptions = machines.map(m => (
+    <SelectItem key={m.id} value={m.id}>{m.asset_tag || m.name}</SelectItem>
+  ));
 
   return (
     <div>
@@ -247,7 +356,7 @@ export default function MaintenancePage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-6 bg-secondary rounded-lg p-1 w-fit">
+      <div className="flex gap-1 mb-4 bg-secondary rounded-lg p-1 w-fit">
         <button onClick={() => setActiveTab('alerts')} className={`px-4 py-2 text-sm rounded-md transition-colors ${activeTab === 'alerts' ? 'bg-card text-foreground shadow-sm font-medium' : 'text-muted-foreground hover:text-foreground'}`}>
           Alerts {openAlerts > 0 && <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-red-500 text-white rounded-full">{openAlerts}</span>}
         </button>
@@ -259,181 +368,321 @@ export default function MaintenancePage() {
         </button>
       </div>
 
-      {/* Alerts Tab */}
+      {/* ============ ALERTS TAB ============ */}
       {activeTab === 'alerts' && (
-        <div className="space-y-3">
-          {alerts.length === 0 ? (
-            <div className="text-center py-12 bg-card rounded-xl border border-border">
+        <div>
+          <FilterBar>
+            <span className="text-xs text-muted-foreground font-medium mr-1">Filters:</span>
+            <FilterSelect value={alertStatusFilter} onValueChange={setAlertStatusFilter} placeholder="Status">
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="open">Open</SelectItem>
+              <SelectItem value="acknowledged">Acknowledged</SelectItem>
+              <SelectItem value="resolved">Resolved</SelectItem>
+            </FilterSelect>
+            <FilterSelect value={alertSeverityFilter} onValueChange={setAlertSeverityFilter} placeholder="Severity">
+              <SelectItem value="all">All Severities</SelectItem>
+              <SelectItem value="critical">Critical</SelectItem>
+              <SelectItem value="warning">Warning</SelectItem>
+              <SelectItem value="info">Info</SelectItem>
+            </FilterSelect>
+            <FilterSelect value={alertMachineFilter} onValueChange={setAlertMachineFilter} placeholder="Machine">
+              <SelectItem value="all">All Machines</SelectItem>
+              {machineFilterOptions}
+            </FilterSelect>
+            <span className="text-xs text-muted-foreground ml-auto">{filteredAlerts.length} result{filteredAlerts.length !== 1 ? 's' : ''}</span>
+          </FilterBar>
+
+          {filteredAlerts.length === 0 ? (
+            <div className="text-center py-12 bg-card rounded-lg border border-border">
               <CheckCircle className="h-8 w-8 text-green-400 mx-auto mb-2" />
-              <p className="text-muted-foreground">No alerts — all systems healthy</p>
+              <p className="text-muted-foreground">No alerts match the current filters</p>
             </div>
-          ) : alerts.map((alert) => (
-            <div key={alert.id} className={`bg-card rounded-xl border border-border p-5 ${alert.status === 'open' && alert.severity === 'critical' ? 'border-red-500/50 ring-1 ring-red-500/20' : ''}`}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Badge variant={severityVariant[alert.severity] || 'info'}>{alert.severity}</Badge>
-                  <p className="font-medium text-foreground">{alert.alert_type}</p>
-                  <span className="text-xs text-muted-foreground">{getMachineName(alert.machine_id)}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="muted">{statusLabels[alert.status] || alert.status}</Badge>
-                  <span className="text-xs text-muted-foreground">{new Date(alert.created_at).toLocaleString('en-GB')}</span>
-                  {isAdmin && alert.status === 'open' && (
-                    <div className="flex gap-1 ml-2">
-                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => handleAcknowledge(alert)}>Acknowledge</Button>
-                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => openCreateWo(alert)}>
-                        <ArrowRight className="h-3 w-3 mr-1" /> Create WO
-                      </Button>
-                    </div>
-                  )}
-                  {isAdmin && alert.status === 'acknowledged' && (
-                    <Button size="sm" variant="outline" className="h-7 text-xs ml-2" onClick={() => handleResolve(alert)}>Resolve</Button>
-                  )}
-                </div>
+          ) : (
+            <div className="bg-card rounded-lg border border-border overflow-hidden">
+              {/* Table header */}
+              <div className="hidden md:grid md:grid-cols-[auto_1fr_1fr_100px_140px_auto] gap-3 px-3 py-2 border-b border-border bg-secondary/50 text-xs font-medium text-muted-foreground">
+                <span className="w-3" />
+                <span>Type</span>
+                <span>Machine</span>
+                <span>Status</span>
+                <span>Date</span>
+                <span>Actions</span>
               </div>
-              {alert.anomaly_score != null && <p className="text-sm text-muted-foreground mt-2">Anomaly score: {(alert.anomaly_score * 100).toFixed(0)}%</p>}
+
+              {/* Table rows */}
+              {paginatedAlerts.map((alert) => (
+                <div
+                  key={alert.id}
+                  className={`grid grid-cols-1 md:grid-cols-[auto_1fr_1fr_100px_140px_auto] gap-x-3 gap-y-1 items-center px-3 py-2 border-b border-border last:border-b-0 hover:bg-secondary/30 transition-colors ${alert.status === 'open' && alert.severity === 'critical' ? 'bg-red-500/5' : ''}`}
+                >
+                  {/* Severity dot */}
+                  <div className="hidden md:flex items-center">
+                    <span className={`w-2.5 h-2.5 rounded-full ${severityDotColor[alert.severity] || 'bg-blue-500'}`} title={alert.severity} />
+                  </div>
+                  {/* Type */}
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className={`md:hidden w-2.5 h-2.5 rounded-full shrink-0 ${severityDotColor[alert.severity] || 'bg-blue-500'}`} />
+                    <span className="text-sm text-foreground truncate">{alert.alert_type}</span>
+                    {alert.anomaly_score != null && (
+                      <span className="text-[10px] text-muted-foreground shrink-0">{(alert.anomaly_score * 100).toFixed(0)}%</span>
+                    )}
+                  </div>
+                  {/* Machine */}
+                  <span className="text-sm text-muted-foreground truncate">{getMachineName(alert.machine_id)}</span>
+                  {/* Status */}
+                  <div>
+                    <Badge variant={alert.status === 'open' ? (alert.severity === 'critical' ? 'destructive' : 'warning') : 'muted'} className="text-[10px] px-1.5 py-0.5">
+                      {statusLabels[alert.status] || alert.status}
+                    </Badge>
+                  </div>
+                  {/* Date */}
+                  <span className="text-xs text-muted-foreground">{new Date(alert.created_at).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                  {/* Actions */}
+                  <div className="flex items-center gap-1">
+                    {isAdmin && alert.status === 'open' && (
+                      <>
+                        <Button size="sm" variant="ghost" className="h-6 text-[10px] px-1.5" onClick={() => handleAcknowledge(alert)}>Ack</Button>
+                        <Button size="sm" variant="ghost" className="h-6 text-[10px] px-1.5" onClick={() => openCreateWo(alert)}>
+                          <ArrowRight className="h-3 w-3 mr-0.5" />WO
+                        </Button>
+                      </>
+                    )}
+                    {isAdmin && alert.status === 'acknowledged' && (
+                      <Button size="sm" variant="ghost" className="h-6 text-[10px] px-1.5" onClick={() => handleResolve(alert)}>Resolve</Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+
+              {/* Pagination */}
+              <div className="px-3 py-2">
+                <Pagination total={filteredAlerts.length} page={alertPage} setPage={setAlertPage} />
+              </div>
             </div>
-          ))}
+          )}
         </div>
       )}
 
-      {/* Work Orders Tab */}
+      {/* ============ WORK ORDERS TAB ============ */}
       {activeTab === 'work-orders' && (
-        <div className="space-y-3">
-          {workOrders.length === 0 ? (
-            <div className="text-center py-12 bg-card rounded-xl border border-border">
-              <p className="text-muted-foreground">No work orders yet</p>
-              {isAdmin && (
+        <div>
+          <FilterBar>
+            <span className="text-xs text-muted-foreground font-medium mr-1">Filters:</span>
+            <FilterSelect value={woStatusFilter} onValueChange={setWoStatusFilter} placeholder="Status">
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="draft">Draft</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="in_progress">In Progress</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+            </FilterSelect>
+            <FilterSelect value={woPriorityFilter} onValueChange={setWoPriorityFilter} placeholder="Priority">
+              <SelectItem value="all">All Priorities</SelectItem>
+              <SelectItem value="critical">Critical</SelectItem>
+              <SelectItem value="high">High</SelectItem>
+              <SelectItem value="medium">Medium</SelectItem>
+              <SelectItem value="low">Low</SelectItem>
+            </FilterSelect>
+            <FilterSelect value={woMachineFilter} onValueChange={setWoMachineFilter} placeholder="Machine">
+              <SelectItem value="all">All Machines</SelectItem>
+              {machineFilterOptions}
+            </FilterSelect>
+            <span className="text-xs text-muted-foreground ml-auto">{filteredWorkOrders.length} result{filteredWorkOrders.length !== 1 ? 's' : ''}</span>
+          </FilterBar>
+
+          {filteredWorkOrders.length === 0 ? (
+            <div className="text-center py-12 bg-card rounded-lg border border-border">
+              <p className="text-muted-foreground">No work orders match the current filters</p>
+              {isAdmin && workOrders.length === 0 && (
                 <Button size="sm" className="mt-3" onClick={() => openCreateWo()}>
                   <Plus className="h-4 w-4 mr-1" /> Create Work Order
                 </Button>
               )}
             </div>
-          ) : workOrders.map((wo) => (
-            <div key={wo.id} className="bg-card rounded-xl border border-border p-5 hover:border-border/80 transition-colors cursor-pointer" onClick={() => isAdmin && openEditWo(wo)}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono text-muted-foreground">{wo.wo_number}</span>
-                    <Badge variant={priorityVariant[wo.priority] || 'info'}>{wo.priority}</Badge>
+          ) : (
+            <div className="bg-card rounded-lg border border-border overflow-hidden">
+              {/* Table header */}
+              <div className="hidden md:grid md:grid-cols-[100px_1fr_1fr_90px_100px_120px] gap-3 px-3 py-2 border-b border-border bg-secondary/50 text-xs font-medium text-muted-foreground">
+                <span>WO #</span>
+                <span>Title</span>
+                <span>Machine</span>
+                <span>Priority</span>
+                <span>Status</span>
+                <span>Date</span>
+              </div>
+
+              {/* Table rows */}
+              {paginatedWorkOrders.map((wo) => (
+                <div
+                  key={wo.id}
+                  className={`grid grid-cols-1 md:grid-cols-[100px_1fr_1fr_90px_100px_120px] gap-x-3 gap-y-1 items-center px-3 py-2 border-b border-border last:border-b-0 hover:bg-secondary/30 transition-colors ${isAdmin ? 'cursor-pointer' : ''}`}
+                  onClick={() => isAdmin && openEditWo(wo)}
+                >
+                  {/* WO Number */}
+                  <span className="text-xs font-mono text-muted-foreground">{wo.wo_number}</span>
+                  {/* Title */}
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="text-sm text-foreground truncate">{wo.title}</span>
                     {wo.trigger_type === 'alert-driven' && (
-                      <Badge variant="warning" className="text-[10px]">
-                        <AlertTriangle className="h-2.5 w-2.5 mr-0.5" /> Alert-driven
-                      </Badge>
+                      <AlertTriangle className="h-3 w-3 text-amber-400 shrink-0" />
                     )}
                   </div>
-                  <p className="font-medium text-foreground mt-1">{wo.title}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{getMachineName(wo.machine_id)}</p>
+                  {/* Machine */}
+                  <span className="text-sm text-muted-foreground truncate">{getMachineName(wo.machine_id)}</span>
+                  {/* Priority */}
+                  <div>
+                    <Badge variant={priorityVariant[wo.priority] || 'info'} className="text-[10px] px-1.5 py-0.5">{wo.priority}</Badge>
+                  </div>
+                  {/* Status */}
+                  <div>
+                    <Badge variant="muted" className="text-[10px] px-1.5 py-0.5">{statusLabels[wo.status] || wo.status}</Badge>
+                  </div>
+                  {/* Date */}
+                  <span className="text-xs text-muted-foreground">
+                    {wo.scheduled_date
+                      ? new Date(wo.scheduled_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+                      : new Date(wo.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                  </span>
                 </div>
-                <div className="text-right">
-                  <Badge variant="muted">{statusLabels[wo.status] || wo.status}</Badge>
-                  {wo.scheduled_date && <p className="text-xs text-muted-foreground mt-1">Scheduled: {new Date(wo.scheduled_date).toLocaleDateString('en-GB')}</p>}
-                </div>
+              ))}
+
+              {/* Pagination */}
+              <div className="px-3 py-2">
+                <Pagination total={filteredWorkOrders.length} page={woPage} setPage={setWoPage} />
               </div>
             </div>
-          ))}
+          )}
         </div>
       )}
 
-      {/* PM Schedules Tab */}
+      {/* ============ PM SCHEDULES TAB ============ */}
       {activeTab === 'pm-schedules' && (
         <div>
           {/* PM Stats */}
           {pmCompliance && (
             <div className="grid grid-cols-3 gap-4 mb-4">
-              <div className="bg-card rounded-xl border border-border p-4">
+              <div className="bg-card rounded-lg border border-border p-3">
                 <p className="text-xs text-muted-foreground">Due / Overdue</p>
                 <p className="text-2xl font-bold text-amber-400 mt-1">{pmSchedules.filter(s => s.next_due_date && new Date(s.next_due_date) <= new Date()).length}</p>
               </div>
-              <div className="bg-card rounded-xl border border-border p-4">
+              <div className="bg-card rounded-lg border border-border p-3">
                 <p className="text-xs text-muted-foreground">Active Schedules</p>
                 <p className="text-2xl font-bold text-foreground mt-1">{pmSchedules.length}</p>
               </div>
-              <div className="bg-card rounded-xl border border-border p-4">
+              <div className="bg-card rounded-lg border border-border p-3">
                 <p className="text-xs text-muted-foreground">Compliance (30d)</p>
                 <p className={`text-2xl font-bold mt-1 ${pmCompliance.compliance_rate >= 85 ? 'text-green-400' : pmCompliance.compliance_rate >= 60 ? 'text-amber-400' : 'text-red-400'}`}>{pmCompliance.compliance_rate}%</p>
               </div>
             </div>
           )}
 
-          {/* PM Schedule List */}
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-muted-foreground">Active PM Plans</h2>
+          <FilterBar>
+            <span className="text-xs text-muted-foreground font-medium mr-1">Filters:</span>
+            <FilterSelect value={pmMachineFilter} onValueChange={setPmMachineFilter} placeholder="Machine">
+              <SelectItem value="all">All Machines</SelectItem>
+              {machineFilterOptions}
+            </FilterSelect>
+            <label className="flex items-center gap-1.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={pmOverdueOnly}
+                onChange={(e) => setPmOverdueOnly(e.target.checked)}
+                className="h-3.5 w-3.5 rounded border-border bg-card text-brand-600 focus:ring-brand-500"
+              />
+              <span className="text-xs text-muted-foreground">Overdue only</span>
+            </label>
+            <span className="text-xs text-muted-foreground ml-auto">{filteredPmSchedules.length} result{filteredPmSchedules.length !== 1 ? 's' : ''}</span>
             {isAdmin && (
-              <Button size="sm" onClick={() => { setPmMachineId(machines[0]?.id || ''); setCreatePmOpen(true); }}>
-                <Plus className="h-4 w-4 mr-1" /> Add PM Schedule
+              <Button size="sm" className="h-7 text-xs" onClick={() => { setPmMachineId(machines[0]?.id || ''); setCreatePmOpen(true); }}>
+                <Plus className="h-3.5 w-3.5 mr-1" /> Add PM
               </Button>
             )}
-          </div>
+          </FilterBar>
 
-          {pmSchedules.length === 0 ? (
-            <div className="text-center py-12 bg-card rounded-xl border border-border">
+          {filteredPmSchedules.length === 0 ? (
+            <div className="text-center py-12 bg-card rounded-lg border border-border">
               <CalendarCheck className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-              <p className="text-muted-foreground">No preventive maintenance schedules yet</p>
+              <p className="text-muted-foreground">No preventive maintenance schedules match the current filters</p>
               <p className="text-sm text-muted-foreground mt-1">Create from templates or build custom schedules.</p>
-              {isAdmin && (
+              {isAdmin && pmSchedules.length === 0 && (
                 <Button size="sm" className="mt-3" onClick={() => setCreatePmOpen(true)}>
                   <Plus className="h-4 w-4 mr-1" /> Add PM Schedule
                 </Button>
               )}
             </div>
           ) : (
-            <div className="space-y-3">
-              {pmSchedules.map((pm: any) => {
+            <div className="bg-card rounded-lg border border-border overflow-hidden">
+              {/* Table header */}
+              <div className="hidden md:grid md:grid-cols-[1fr_1fr_100px_120px_80px_80px] gap-3 px-3 py-2 border-b border-border bg-secondary/50 text-xs font-medium text-muted-foreground">
+                <span>Name</span>
+                <span>Machine</span>
+                <span>Trigger</span>
+                <span>Next Due</span>
+                <span>Status</span>
+                <span>Actions</span>
+              </div>
+
+              {/* Table rows */}
+              {paginatedPmSchedules.map((pm: any) => {
                 const isOverdue = pm.next_due_date && new Date(pm.next_due_date) < new Date();
                 const isDueToday = pm.next_due_date && new Date(pm.next_due_date).toDateString() === new Date().toDateString();
-                const borderColor = isOverdue ? 'border-l-red-500' : isDueToday ? 'border-l-amber-500' : 'border-l-green-500';
                 return (
-                  <div key={pm.id} className={`bg-card rounded-xl border border-border border-l-4 ${borderColor} p-5`}>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium text-foreground">{pm.name}</p>
-                          <Badge variant={pm.trigger_type === 'condition' ? 'warning' : pm.trigger_type === 'hybrid' ? 'info' : 'default'}>
-                            {pm.trigger_type}
-                          </Badge>
-                          {pm.category && <Badge variant="muted">{pm.category}</Badge>}
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {getMachineName(pm.machine_id)}
-                          {pm.calendar_unit_value && pm.calendar_unit && ` · Every ${pm.calendar_unit_value} ${pm.calendar_unit}`}
-                          {pm.estimated_duration_minutes && ` · ~${pm.estimated_duration_minutes} min`}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        {pm.next_due_date && (
-                          <div className="flex items-center gap-1">
-                            <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                            <span className={`text-sm font-medium ${isOverdue ? 'text-red-400' : isDueToday ? 'text-amber-400' : 'text-foreground'}`}>
-                              {isOverdue ? 'Overdue' : isDueToday ? 'Due today' : new Date(pm.next_due_date).toLocaleDateString('en-GB')}
-                            </span>
-                          </div>
-                        )}
-                        {isAdmin && (
-                          <Button size="sm" variant="ghost" className="h-7 text-xs mt-1" onClick={async () => {
-                            try {
-                              await api.deletePMSchedule(pm.id);
-                              await loadData();
-                              showFeedback('Schedule deactivated');
-                            } catch { showFeedback('Failed'); }
-                          }}>Deactivate</Button>
-                        )}
-                      </div>
+                  <div
+                    key={pm.id}
+                    className="grid grid-cols-1 md:grid-cols-[1fr_1fr_100px_120px_80px_80px] gap-x-3 gap-y-1 items-center px-3 py-2 border-b border-border last:border-b-0 hover:bg-secondary/30 transition-colors"
+                  >
+                    {/* Name */}
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className={`w-1.5 h-5 rounded-full shrink-0 ${isOverdue ? 'bg-red-500' : isDueToday ? 'bg-amber-500' : 'bg-green-500'}`} />
+                      <span className="text-sm text-foreground truncate">{pm.name}</span>
+                      {pm.category && <span className="text-[10px] text-muted-foreground shrink-0">({pm.category})</span>}
                     </div>
-                    {pm.checklist && pm.checklist.length > 0 && (
-                      <div className="mt-3 pt-3 border-t border-border">
-                        <p className="text-xs text-muted-foreground mb-1">Checklist ({pm.checklist.length} steps)</p>
-                        <div className="text-xs text-muted-foreground space-y-0.5">
-                          {pm.checklist.slice(0, 3).map((item: any, i: number) => (
-                            <p key={i}>• {item.step}</p>
-                          ))}
-                          {pm.checklist.length > 3 && <p className="text-muted-foreground/50">+{pm.checklist.length - 3} more...</p>}
-                        </div>
-                      </div>
-                    )}
+                    {/* Machine */}
+                    <div className="text-sm text-muted-foreground truncate">
+                      {getMachineName(pm.machine_id)}
+                      {pm.estimated_duration_minutes && <span className="text-[10px] ml-1">~{pm.estimated_duration_minutes}min</span>}
+                    </div>
+                    {/* Trigger type */}
+                    <div>
+                      <Badge variant={pm.trigger_type === 'condition' ? 'warning' : pm.trigger_type === 'hybrid' ? 'info' : 'default'} className="text-[10px] px-1.5 py-0.5">
+                        {pm.trigger_type}
+                      </Badge>
+                    </div>
+                    {/* Next due */}
+                    <span className={`text-xs font-medium ${isOverdue ? 'text-red-400' : isDueToday ? 'text-amber-400' : 'text-muted-foreground'}`}>
+                      {pm.next_due_date
+                        ? isOverdue
+                          ? 'Overdue'
+                          : isDueToday
+                          ? 'Due today'
+                          : new Date(pm.next_due_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+                        : '-'}
+                    </span>
+                    {/* Status indicator */}
+                    <div>
+                      <Badge variant={isOverdue ? 'destructive' : isDueToday ? 'warning' : 'success'} className="text-[10px] px-1.5 py-0.5">
+                        {isOverdue ? 'Overdue' : isDueToday ? 'Today' : 'OK'}
+                      </Badge>
+                    </div>
+                    {/* Actions */}
+                    <div>
+                      {isAdmin && (
+                        <Button size="sm" variant="ghost" className="h-6 text-[10px] px-1.5" onClick={async () => {
+                          try {
+                            await api.deletePMSchedule(pm.id);
+                            await loadData();
+                            showFeedback('Schedule deactivated');
+                          } catch { showFeedback('Failed'); }
+                        }}>Deactivate</Button>
+                      )}
+                    </div>
                   </div>
                 );
               })}
+
+              {/* Pagination */}
+              <div className="px-3 py-2">
+                <Pagination total={filteredPmSchedules.length} page={pmPage} setPage={setPmPage} />
+              </div>
             </div>
           )}
         </div>
